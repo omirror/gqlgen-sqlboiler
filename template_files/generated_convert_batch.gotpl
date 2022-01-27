@@ -12,7 +12,7 @@ import (
 	"bytes"
 	"strings"
 
-	"github.com/web-ridge/utils-go/boilergql/v3"
+	"gleez.io/vdesk/pkg/boilergql"
 	"github.com/vektah/gqlparser/v2"
 	"github.com/vektah/gqlparser/v2/ast"
 	"github.com/99designs/gqlgen/graphql"

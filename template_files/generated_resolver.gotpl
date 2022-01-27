@@ -20,7 +20,7 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/types"
 	"github.com/volatiletech/null/v8"
 
-	"github.com/web-ridge/utils-go/boilergql/v3"
+	"gleez.io/vdesk/pkg/boilergql"
 
 	"database/sql"
 	"github.com/vektah/gqlparser/v2"
@@ -62,7 +62,7 @@ const inputKey = "input"
 		{{- if .IsSingle }}
 			dbID := {{ .Model.Name }}ID(id)
 			mods := Get{{ .Model.Name }}PreloadMods(ctx)
-			mods = append(mods, dm.{{ .Model.Name }}Where.ID.EQ(dbID))
+			mods = append(mods, dm.{{ .Model.Name }}Where.Id.EQ(dbID))
 			{{ range $scope := $.AuthorizationScopes -}}
 				{{- if (call $scope.AddHook $resolver.Model.BoilerModel $resolver "singleWhere") }}
 					mods = append(mods, dm.{{ $resolver.Model.Name }}Where.{{ $scope.BoilerColumnName }}.EQ({{ $scope.ImportAlias }}.{{ $scope.ScopeResolverName }}(ctx)))
@@ -118,7 +118,7 @@ const inputKey = "input"
 							log.Error().Err(err).Msg({{ $resolver.PublicErrorKey }})
 							return nil, errors.New({{ $resolver.PublicErrorKey }})
 						}
-						m.{{ $field.Name }}ID = {{ $field.JSONName }}.ID
+						m.{{ $field.Name }}Id = {{ $field.JSONName }}.Id
 					}
 
 				{{ end -}}
@@ -137,7 +137,7 @@ const inputKey = "input"
 
 			// resolve requested fields after creating
 			mods := Get{{ .Model.Name }}PreloadModsWithLevel(ctx, {{ .Model.Name }}PayloadPreloadLevels.{{ .Model.Name }})
-			mods = append(mods, dm.{{ .Model.Name }}Where.ID.EQ(m.ID))
+			mods = append(mods, dm.{{ .Model.Name }}Where.Id.EQ(m.Id))
 			pM, err := dm.{{ .Model.PluralName }}(mods...).One(ctx, r.db)
 			if err != nil {
 				log.Error().Err(err).Msg({{ $resolver.PublicErrorKey }})
@@ -163,7 +163,7 @@ const inputKey = "input"
 							*input.{{ $field.Name }},
 						)
 						if _, err := dm.{{ $field.BoilerField.Relationship.PluralName }}(
-							dm.{{ $field.BoilerField.Relationship.Name }}Where.ID.EQ(dbID),
+							dm.{{ $field.BoilerField.Relationship.Name }}Where.Id.EQ(dbID),
 							{{ range $scope := $.AuthorizationScopes -}}
 								{{- if (call $scope.AddHook $field.BoilerField.Relationship $resolver "updateRelationWhere")   }}
 									dm.{{ $field.BoilerField.Relationship.Name }}Where.{{ $scope.BoilerColumnName }}.EQ(
@@ -182,7 +182,7 @@ const inputKey = "input"
 
 			dbID := {{ .Model.Name }}ID(id)
 			if _, err := dm.{{ .Model.PluralName }}(
-				dm.{{ .Model.Name }}Where.ID.EQ(dbID),
+				dm.{{ .Model.Name }}Where.Id.EQ(dbID),
 				{{ range $scope := $.AuthorizationScopes -}}
 					{{- if (call $scope.AddHook $resolver.Model.BoilerModel $resolver "updateWhere")   }}
 						dm.{{ $resolver.Model.Name }}Where.{{ $scope.BoilerColumnName }}.EQ({{ $scope.ImportAlias }}.{{ $scope.ScopeResolverName }}(ctx)),
@@ -195,7 +195,7 @@ const inputKey = "input"
 
 			// resolve requested fields after updating
 			mods := Get{{ .Model.Name }}PreloadModsWithLevel(ctx, {{ .Model.Name }}PayloadPreloadLevels.{{ .Model.Name }})
-			mods = append(mods, dm.{{ .Model.Name }}Where.ID.EQ(dbID))
+			mods = append(mods, dm.{{ .Model.Name }}Where.Id.EQ(dbID))
 			{{ range $scope := $.AuthorizationScopes -}}
 				{{- if (call $scope.AddHook $resolver.Model.BoilerModel $resolver "updateAfterWhere")   }}
 					mods = append(mods, dm.{{ $resolver.Model.Name }}Where.{{ $scope.BoilerColumnName }}.EQ({{ $scope.ImportAlias }}.{{ $scope.ScopeResolverName }}(ctx)))
@@ -216,7 +216,7 @@ const inputKey = "input"
 		{{- if .IsDelete }}
 			dbID := {{ .Model.Name }}ID(id)
 			mods := []qm.QueryMod{
-				dm.{{ .Model.Name }}Where.ID.EQ(dbID),
+				dm.{{ .Model.Name }}Where.Id.EQ(dbID),
 				{{ range $scope := $.AuthorizationScopes -}}
 					{{- if (call $scope.AddHook $resolver.Model.BoilerModel $resolver "deleteWhere")   }}
 						dm.{{ $resolver.Model.Name }}Where.{{ $scope.BoilerColumnName }}.EQ(
@@ -270,7 +270,7 @@ const inputKey = "input"
 				{{- end }}
 			{{- end }}
 			mods = append(mods, {{.Model.Name}}FilterToMods(filter)...)
-			mods = append(mods, qm.Select(dm.{{ .Model.Name }}Columns.ID))
+			mods = append(mods, qm.Select(dm.{{ .Model.Name }}Columns.Id))
 			mods = append(mods, qm.From(dm.TableNames.{{ .Model.BoilerModel.TableName }}))
 
 			{{- if .Model.HasPrimaryStringID }}
@@ -284,7 +284,7 @@ const inputKey = "input"
 			}
 
 			boilerIDs := boilergql.RemovedIDsToBoiler{{.Model.PrimaryKeyType|go}}(IDsToRemove)
-			if _, err := dm.{{ .Model.PluralName }}(dm.{{ .Model.Name }}Where.ID.IN(boilerIDs)).DeleteAll(ctx, r.db); err != nil {
+			if _, err := dm.{{ .Model.PluralName }}(dm.{{ .Model.Name }}Where.Id.IN(boilerIDs)).DeleteAll(ctx, r.db); err != nil {
 				log.Error().Err(err).Msg({{ $resolver.PublicErrorKey }})
 				return nil, errors.New({{ $resolver.PublicErrorKey }})
 			}

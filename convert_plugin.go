@@ -64,11 +64,13 @@ func (t ModelBuild) Imports() []Import {
 	return []Import{
 		{
 			Alias:      t.Frontend.PackageName,
-			ImportPath: t.Frontend.Directory,
+			// ImportPath: t.Frontend.Directory,
+			ImportPath: "gleez.io/vdesk/temp/models",
 		},
 		{
 			Alias:      t.Backend.PackageName,
-			ImportPath: t.Backend.Directory,
+			// ImportPath: t.Backend.Directory,
+			ImportPath: "gleez.io/vdesk/model",
 		},
 	}
 }
@@ -231,9 +233,10 @@ func EnhanceModelsWithInformation(
 
 	// Sort in same order
 	sort.Slice(models, func(i, j int) bool { return models[i].Name < models[j].Name })
-	for _, m := range models {
-		cfg.Models.Add(m.Name, cfg.Model.ImportPath()+"."+gqlgenTemplates.ToGo(m.Name))
-	}
+	// for _, m := range models {
+	// 	cfg.Models.Add(m.Name, cfg.Model.ImportPath()+"."+gqlgenTemplates.ToGo(m.Name))
+	// }
+
 	return models
 }
 
@@ -288,6 +291,10 @@ func (m *ConvertPlugin) MutateConfig(originalCfg *config.Config) error {
 	// 	for _, field := range model.Fields {
 	// 		fmt.Println("    ", field.Name, field.Type)
 	// 		fmt.Println("    ", field.BoilerField.Name, field.BoilerField.Type)
+			
+	// 		// if model.Name == "Account" {
+	// 		// 	log.Debug().Str("Name", field.Name).Str("Type", field.Type).Msg("Fields")
+	// 		// }
 	// 	}
 	// }
 
@@ -327,7 +334,7 @@ func (m *ConvertPlugin) MutateConfig(originalCfg *config.Config) error {
 			}); renderError != nil {
 			log.Err(renderError).Msg("error while rendering " + templateName)
 		}
-		log.Debug().Msg("[convert] rendered " + templateName)
+
 	}
 
 	return nil
@@ -462,6 +469,10 @@ func enhanceModelsWithFields(enums []*Enum, schema *ast.Schema, cfg *config.Conf
 				continue
 			}
 
+			// if name == "ID" {
+			// 	name = "Id"
+			// }
+			
 			// override type struct with qqlgen code
 			typ = binder.CopyModifiersFromAst(field.Type, typ)
 			if isStruct(typ) && (fieldDef.Kind == ast.Object || fieldDef.Kind == ast.InputObject) {
@@ -478,7 +489,7 @@ func enhanceModelsWithFields(enums []*Enum, schema *ast.Schema, cfg *config.Conf
 			// get sqlboiler information of the field
 			boilerField := findBoilerFieldOrForeignKey(m.BoilerModel, name, isObject)
 			isString := strings.Contains(strings.ToLower(boilerField.Type), "string")
-			isNumberID := strings.HasSuffix(name, "ID") && !isString
+			isNumberID := strings.HasSuffix(name, "Id") && !isString
 			isPrimaryNumberID := isPrimaryID && !isString
 
 			isPrimaryStringID := isPrimaryID && isString
@@ -685,8 +696,14 @@ func getExtrasFromSchema(schema *ast.Schema, boilerEnums []*BoilerEnum, models [
 				HasFilter:     findModel(models, schemaType.Name+"Filter") != nil,
 			}
 			for _, v := range schemaType.EnumValues {
+				name := strings.Replace(v.Name, "ID", "Id", 1)
+				if strings.EqualFold(name, "id") {
+					name = "Id"
+				}
+				
 				it.Values = append(it.Values, &EnumValue{
-					Name:            v.Name,
+					// Name:            v.Name,
+					Name:			 name,
 					NameLower:       strcase.ToLowerCamel(strings.ToLower(v.Name)),
 					Description:     v.Description,
 					BoilerEnumValue: findBoilerEnumValue(boilerEnum, v.Name),

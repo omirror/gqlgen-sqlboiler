@@ -736,6 +736,10 @@ func toGraphQLType(boilerField *BoilerField) string {
 		return "Int"
 	}
 
+	if strings.Contains(lowerBoilerType, "json") {
+		return "Map"
+	}
+	log.Info().Str("boilerType", lowerBoilerType).Msg("Check type")
 	// e.g. null.JSON let user define how it looks with their own struct
 	return strcase.ToCamel(boilerField.Name)
 }
@@ -880,6 +884,12 @@ input %[1]vFilter {
 
 // TODO: only generate these if they are set
 const queryHelperStructs = `
+scalar Map
+
+input MapFilter {
+	isNull: Boolean
+}
+
 input IDFilter {
 	isNull: Boolean
 	notNull: Boolean

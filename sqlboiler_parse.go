@@ -125,9 +125,9 @@ func GetBoilerModels(dir string) ([]*BoilerModel, []*BoilerEnum) { //nolint:goco
 		if boilerFieldName == "L" || boilerFieldName == "R" {
 			continue
 		}
-		isID := boilerFieldName == "ID"
+		isID := (boilerFieldName == "ID" || boilerFieldName == "Id")
 		isRelation := strings.HasSuffix(boilerFieldName, "ID") && !isID
-
+		
 		addFieldToMap(fieldsPerModelName, modelName, &BoilerField{
 			Name:             boilerFieldName,
 			PluralName:       Plural(boilerFieldName),
@@ -149,7 +149,7 @@ func GetBoilerModels(dir string) ([]*BoilerModel, []*BoilerEnum) { //nolint:goco
 		tableName := findTableName(tableNames, modelName)
 
 		var hasPrimaryStringID bool
-		IDField := findBoilerField(fields, "ID")
+		IDField := findBoilerIdField(fields, "ID")
 		if IDField != nil && IDField.Type == "string" {
 			hasPrimaryStringID = true
 		}
@@ -230,6 +230,15 @@ func filterEnumsByModelName(enums []*BoilerEnum, modelName string) []*BoilerEnum
 		}
 	}
 	return a
+}
+
+func findBoilerIdField(fields []*BoilerField, fieldName string) *BoilerField {
+	for _, m := range fields {
+		if m.Name == "ID" || m.Name == "Id" {
+			return m
+		}
+	}
+	return nil
 }
 
 func findBoilerField(fields []*BoilerField, fieldName string) *BoilerField {

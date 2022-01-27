@@ -2,7 +2,7 @@ package gbgen
 
 import (
 	"fmt"
-	"path"
+	// "path"
 	"strings"
 
 	"github.com/rs/zerolog/log"
@@ -56,6 +56,7 @@ func (m *ResolverPlugin) GenerateCode(data *codegen.Data) error {
 		return nil
 	}
 
+	log.Debug().Str("PackageName", data.Config.Resolver.Package).Msg("[resolver] get boiler models")
 	// gqlgenTemplates.CurrentImports = &gqlgenTemplates.Imports{}
 
 	// Get all models information
@@ -82,17 +83,20 @@ func (m *ResolverPlugin) generateSingleFile(data *codegen.Data, models []*Model,
 
 	file.Imports = append(file.Imports, Import{
 		Alias:      ".",
-		ImportPath: path.Join(m.rootImportPath, m.output.Directory),
+		// ImportPath: path.Join(m.rootImportPath, m.output.Directory),
+		ImportPath: "gleez.io/vdesk/temp/helpers",
 	})
 
 	file.Imports = append(file.Imports, Import{
 		Alias:      "dm",
-		ImportPath: path.Join(m.rootImportPath, m.backend.Directory),
+		// ImportPath: path.Join(m.rootImportPath, m.backend.Directory),
+		ImportPath: "gleez.io/vdesk/model",
 	})
 
 	file.Imports = append(file.Imports, Import{
 		Alias:      "fm",
-		ImportPath: path.Join(m.rootImportPath, m.frontend.Directory),
+		// ImportPath: path.Join(m.rootImportPath, m.frontend.Directory),
+		ImportPath: "gleez.io/vdesk/temp/models",
 	})
 
 	file.Imports = append(file.Imports, Import{
@@ -139,7 +143,7 @@ func (m *ResolverPlugin) generateSingleFile(data *codegen.Data, models []*Model,
 		File:                &file,
 		PackageName:         data.Config.Resolver.Package,
 		ResolverType:        data.Config.Resolver.Type,
-		HasRoot:             false,
+		HasRoot:             true,
 		Models:              models,
 		AuthorizationScopes: m.pluginConfig.AuthorizationScopes,
 	}

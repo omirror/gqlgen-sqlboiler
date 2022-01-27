@@ -11,8 +11,8 @@ import (
 	"errors"
 	"bytes"
 	"strings"
+	"database/sql"
 
-	"github.com/web-ridge/utils-go/boilergql/v3"
 	"github.com/vektah/gqlparser/v2"
 	"github.com/vektah/gqlparser/v2/ast"
 	"github.com/99designs/gqlgen/graphql"
@@ -27,7 +27,7 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/types"
 	"github.com/volatiletech/null/v8"
 
-	"database/sql"
+	"gleez.io/vdesk/pkg/boilergql"
 	{{ range $import := .Imports }}
 		{{ $import.Alias }} "{{ $import.ImportPath }}"
 	{{ end }}
@@ -43,7 +43,7 @@ import (
 			{{- if eq $field.Name "Sort" -}}
 				var {{ $field.Enum.Name }}Column = map[{{ $.Frontend.PackageName }}.{{$field.Enum.Name}}]string{
 					{{- range $value := $field.Enum.Values}}
-						{{ $.Frontend.PackageName }}.{{ $field.Enum.Name|go }}{{ .Name|go }}: {{ $.Backend.PackageName }}.{{ $model.BoilerModel.Name }}Columns.{{ $value.Name|go }},
+						{{ $.Frontend.PackageName }}.{{ $field.Enum.Name|go }}{{ .Name|go }}: {{ $.Backend.PackageName }}.{{ $model.BoilerModel.Name }}Columns.{{ $value.BoilerEnumValue.Name|go }},
 					{{- end }}
 				}
 
@@ -112,7 +112,7 @@ import (
 				{{- range $field := .Fields -}}
 					{{- if eq $field.Name "Sort" -}}
 						{{- range $value := $field.Enum.Values -}}
-							{{ if eq $value.Name "ID" }}
+							{{ if eq $value.Name "Id" }}
 							if order.Sort == {{ $.Frontend.PackageName }}.{{ $field.Enum.Name|go }}{{ .Name|go }} {
 								handledID = true
 							}
@@ -129,9 +129,9 @@ import (
 			{{- range $field := .Fields -}}
 				{{- if eq $field.Name "Sort" -}}
 					{{- range $value := $field.Enum.Values}}
-						{{ if eq $value.Name "ID" }}
+						{{ if eq $value.Name "Id" }}
 							if !handledID {
-								a = append(a, boilergql.ToCursorValue(string({{ $.Frontend.PackageName }}.{{ $field.Enum.Name|go }}{{ .Name|go }}), m.ID))
+								a = append(a, boilergql.ToCursorValue(string({{ $.Frontend.PackageName }}.{{ $field.Enum.Name|go }}{{ .Name|go }}), m.Id))
 							}
 						{{ end }}
 				{{- end -}}
@@ -168,7 +168,7 @@ import (
 				{{- range $field := .Fields -}}
 					{{- if eq $field.Name "Sort" -}}
 						{{- range $value := $field.Enum.Values -}}
-							{{ if eq $value.Name "ID" }}
+							{{ if eq $value.Name "Id" }}
 								if order.Sort == {{ $.Frontend.PackageName }}.{{ $field.Enum.Name|go }}{{ .Name|go }} {
 									handledID = true
 								}
@@ -187,7 +187,7 @@ import (
 			}
 			if !handledID {
 				a = append(a, qm.OrderBy(boilergql.GetOrderBy(
-					{{ $.Backend.PackageName }}.{{ $model.BoilerModel.Name }}Columns.ID,
+					{{ $.Backend.PackageName }}.{{ $model.BoilerModel.Name }}Columns.Id,
 					boilergql.GetDirection(defaultDirection, reverse),
 				)))
 			}
