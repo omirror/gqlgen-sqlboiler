@@ -14,16 +14,17 @@ import (
 	"unicode"
 
 	"github.com/web-ridge/gqlgen-sqlboiler/v3/customization"
+	"github.com/web-ridge/gqlgen-sqlboiler/v3/templates"
 
 	"github.com/99designs/gqlgen/codegen/config"
 	gqlgenTemplates "github.com/99designs/gqlgen/codegen/templates"
 	"github.com/99designs/gqlgen/plugin"
+	"github.com/vektah/gqlparser/v2/ast"
+	
 	"github.com/iancoleman/strcase"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/vektah/gqlparser/v2/ast"
 	"github.com/volatiletech/strmangle"
-	"github.com/web-ridge/gqlgen-sqlboiler/v3/templates"
 )
 
 var pathRegex *regexp.Regexp //nolint:gochecknoglobals

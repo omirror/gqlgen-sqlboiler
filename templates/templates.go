@@ -88,6 +88,7 @@ func WriteTemplateFile(fileName string, cfg Options) error {
 func GetTemplateContent(cfg Options) (string, error) {
 	tpl, err := template.New("").Funcs(template.FuncMap{
 		"go":      gqlgenTemplates.ToGo,
+		"id":      ToGoId,
 		"lcFirst": gqlgenTemplates.LcFirst,
 		"ucFirst": gqlgenTemplates.UcFirst,
 	}).Parse(cfg.Template)
@@ -121,6 +122,20 @@ func isFunctionOverriddenByUser(functionName string, userDefinedFunctions []stri
 
 func ToGo(name string) string {
 	return strcase.ToCamel(name)
+}
+
+func ToGoId(str string) string {
+	name := gqlgenTemplates.ToGo(str)
+	
+	if strings.HasSuffix(strings.ToLower(name), "id")  {
+		return strings.Replace(name, "ID", "Id", -1)
+	}
+
+	if strings.HasSuffix(strings.ToLower(name), "ids")  {
+		return strings.Replace(name, "IDS", "Ids", -1)
+	}
+	
+	return name
 }
 
 func ToLowerAndGo(name string) string {
