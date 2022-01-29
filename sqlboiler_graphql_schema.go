@@ -267,11 +267,13 @@ func SchemaGet(
 		//type UserConnection {
 		//	edges: [UserEdge]
 		//	pageInfo: PageInfo!
+		//	totalCount: Int!
 		//}
 
 		w.l("type " + model.Name + "Connection {")
 		w.tl(`edges: [` + model.Name + `Edge]`)
 		w.tl(`pageInfo: PageInfo!`)
+		// w.tl(`totalCount: Int!`)
 		w.l("}")
 
 		w.br()
@@ -394,10 +396,10 @@ func SchemaGet(
 				if field.SkipInput || field.SkipUpdate {
 					continue
 				}
-				// id is not required in create and will be specified in update resolver
-				if field.Name == "id" {
-					continue
-				}
+				// // id is not required in create and will be specified in update resolver
+				// if field.Name == "id" {
+				// 	continue
+				// }
 				// not possible yet in input
 				// TODO: make this possible for one-to-one structs?
 				// only for foreign keys inside model itself
@@ -739,7 +741,8 @@ func toGraphQLType(boilerField *BoilerField) string {
 	if strings.Contains(lowerBoilerType, "json") {
 		return "Map"
 	}
-	log.Info().Str("boilerType", lowerBoilerType).Msg("Check type")
+
+	// log.Info().Str("boilerType", lowerBoilerType).Msg("Check type")
 	// e.g. null.JSON let user define how it looks with their own struct
 	return strcase.ToCamel(boilerField.Name)
 }

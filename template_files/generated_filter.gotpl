@@ -13,11 +13,13 @@ import (
 	"errors"
 	"bytes"
 	"strings"
-	"gleez.io/vdesk/pkg/boilergql"
+	"database/sql"
+
 	"github.com/vektah/gqlparser/v2"
 	"github.com/vektah/gqlparser/v2/ast"
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/introspection"
+	
 	"github.com/volatiletech/sqlboiler/v4/drivers"
 	"github.com/ericlagergren/decimal"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -26,7 +28,9 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qmhelper"
 	"github.com/volatiletech/sqlboiler/v4/types"
 	"github.com/volatiletech/null/v8"
-	"database/sql"
+
+	"gleez.io/vdesk/util/boilergql"
+	
 	{{ range $import := .Imports }}
 		{{ $import.Alias }} "{{ $import.ImportPath }}"
 	{{ end }}

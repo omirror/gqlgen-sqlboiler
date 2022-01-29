@@ -127,7 +127,7 @@ func GetBoilerModels(dir string) ([]*BoilerModel, []*BoilerEnum) { //nolint:goco
 		}
 		isID := (boilerFieldName == "ID" || boilerFieldName == "Id")
 		isRelation := strings.HasSuffix(boilerFieldName, "ID") && !isID
-		
+
 		addFieldToMap(fieldsPerModelName, modelName, &BoilerField{
 			Name:             boilerFieldName,
 			PluralName:       Plural(boilerFieldName),

@@ -11,6 +11,7 @@ import (
 	"errors"
 	"bytes"
 	"strings"
+	"database/sql"
 
 	"github.com/ericlagergren/decimal"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -20,14 +21,14 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/types"
 	"github.com/volatiletech/null/v8"
 
-	"gleez.io/vdesk/pkg/boilergql"
-
-	"database/sql"
 	"github.com/vektah/gqlparser/v2"
 	"github.com/vektah/gqlparser/v2/ast"
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/introspection"
 	"github.com/rs/zerolog/log"
+	
+	"gleez.io/vdesk/util/boilergql"
+	
 	{{ range $import := $.Imports }}
 		{{ $import.Alias }} "{{ $import.ImportPath }}"
 	{{ end }}

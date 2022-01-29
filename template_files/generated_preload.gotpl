@@ -11,8 +11,8 @@ import (
 	"errors"
 	"bytes"
 	"strings"
+	"database/sql"
 
-	"gleez.io/vdesk/pkg/boilergql"
 	"github.com/vektah/gqlparser/v2"
 	"github.com/vektah/gqlparser/v2/ast"
 	"github.com/99designs/gqlgen/graphql"
@@ -26,7 +26,8 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/types"
 	"github.com/volatiletech/null/v8"
 
-	"database/sql"
+	"gleez.io/vdesk/util/boilergql"
+	
 	{{ range $import := .Imports }}
 		{{ $import.Alias }} "{{ $import.ImportPath }}"
 	{{ end }}

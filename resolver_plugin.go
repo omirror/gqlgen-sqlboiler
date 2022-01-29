@@ -82,21 +82,21 @@ func (m *ResolverPlugin) generateSingleFile(data *codegen.Data, models []*Model,
 	file := File{}
 
 	file.Imports = append(file.Imports, Import{
-		Alias:      ".",
+		Alias: ".",
 		// ImportPath: path.Join(m.rootImportPath, m.output.Directory),
-		ImportPath: "gleez.io/vdesk/temp/helpers",
+		ImportPath: m.output.ImportPath,
 	})
 
 	file.Imports = append(file.Imports, Import{
-		Alias:      "dm",
+		Alias: "dm",
 		// ImportPath: path.Join(m.rootImportPath, m.backend.Directory),
-		ImportPath: "gleez.io/vdesk/model",
+		ImportPath: m.backend.ImportPath,
 	})
 
 	file.Imports = append(file.Imports, Import{
-		Alias:      "fm",
+		Alias: "fm",
 		// ImportPath: path.Join(m.rootImportPath, m.frontend.Directory),
-		ImportPath: "gleez.io/vdesk/temp/models",
+		ImportPath: m.frontend.ImportPath,
 	})
 
 	file.Imports = append(file.Imports, Import{

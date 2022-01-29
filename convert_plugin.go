@@ -64,13 +64,13 @@ func (t ModelBuild) Imports() []Import {
 	return []Import{
 		{
 			Alias:      t.Frontend.PackageName,
+			ImportPath: t.Frontend.ImportPath,
 			// ImportPath: t.Frontend.Directory,
-			ImportPath: "gleez.io/vdesk/temp/models",
 		},
 		{
 			Alias:      t.Backend.PackageName,
+			ImportPath: t.Backend.ImportPath,
 			// ImportPath: t.Backend.Directory,
-			ImportPath: "gleez.io/vdesk/model",
 		},
 	}
 }
@@ -187,6 +187,7 @@ type ConvertPlugin struct {
 type Config struct {
 	Directory   string
 	PackageName string
+	ImportPath  string
 }
 
 // DatabaseDriver defines which data syntax to use for some of the converts
@@ -246,10 +247,12 @@ func (m *ConvertPlugin) MutateConfig(originalCfg *config.Config) error {
 		Backend: Config{
 			Directory:   path.Join(m.rootImportPath, m.Backend.Directory),
 			PackageName: m.Backend.PackageName,
+			ImportPath:  m.Backend.ImportPath,
 		},
 		Frontend: Config{
 			Directory:   path.Join(m.rootImportPath, m.Frontend.Directory),
 			PackageName: m.Frontend.PackageName,
+			ImportPath:  m.Frontend.ImportPath,
 		},
 		PluginConfig: m.PluginConfig,
 	}
@@ -291,7 +294,7 @@ func (m *ConvertPlugin) MutateConfig(originalCfg *config.Config) error {
 	// 	for _, field := range model.Fields {
 	// 		fmt.Println("    ", field.Name, field.Type)
 	// 		fmt.Println("    ", field.BoilerField.Name, field.BoilerField.Type)
-			
+
 	// 		// if model.Name == "Account" {
 	// 		// 	log.Debug().Str("Name", field.Name).Str("Type", field.Type).Msg("Fields")
 	// 		// }
@@ -472,7 +475,7 @@ func enhanceModelsWithFields(enums []*Enum, schema *ast.Schema, cfg *config.Conf
 			// if name == "ID" {
 			// 	name = "Id"
 			// }
-			
+
 			// override type struct with qqlgen code
 			typ = binder.CopyModifiersFromAst(field.Type, typ)
 			if isStruct(typ) && (fieldDef.Kind == ast.Object || fieldDef.Kind == ast.InputObject) {
@@ -700,10 +703,10 @@ func getExtrasFromSchema(schema *ast.Schema, boilerEnums []*BoilerEnum, models [
 				if strings.EqualFold(name, "id") {
 					name = "Id"
 				}
-				
+
 				it.Values = append(it.Values, &EnumValue{
 					// Name:            v.Name,
-					Name:			 name,
+					Name:            name,
 					NameLower:       strcase.ToLowerCamel(strings.ToLower(v.Name)),
 					Description:     v.Description,
 					BoilerEnumValue: findBoilerEnumValue(boilerEnum, v.Name),
