@@ -126,15 +126,15 @@ func ToGo(name string) string {
 
 func ToGoId(str string) string {
 	name := gqlgenTemplates.ToGo(str)
-	
-	if strings.HasSuffix(strings.ToLower(name), "id")  {
+
+	if strings.HasSuffix(strings.ToLower(name), "id") {
 		return strings.Replace(name, "ID", "Id", -1)
 	}
 
-	if strings.HasSuffix(strings.ToLower(name), "ids")  {
+	if strings.HasSuffix(strings.ToLower(name), "ids") {
 		return strings.Replace(name, "IDS", "Ids", -1)
 	}
-	
+
 	return name
 }
 

@@ -20,7 +20,7 @@ import (
 	gqlgenTemplates "github.com/99designs/gqlgen/codegen/templates"
 	"github.com/99designs/gqlgen/plugin"
 	"github.com/vektah/gqlparser/v2/ast"
-	
+
 	"github.com/iancoleman/strcase"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -307,6 +307,7 @@ func (m *ConvertPlugin) MutateConfig(originalCfg *config.Config) error {
 		"generated_convert_batch.go",
 		"generated_convert_input.go",
 		"generated_filter.go",
+		"generated_filter_parser.go",
 		"generated_preload.go",
 		"generated_sort.go",
 	}
@@ -700,14 +701,8 @@ func getExtrasFromSchema(schema *ast.Schema, boilerEnums []*BoilerEnum, models [
 				HasFilter:     findModel(models, schemaType.Name+"Filter") != nil,
 			}
 			for _, v := range schemaType.EnumValues {
-				name := strings.Replace(v.Name, "ID", "Id", 1)
-				if strings.EqualFold(name, "id") {
-					name = "Id"
-				}
-
 				it.Values = append(it.Values, &EnumValue{
-					// Name:            v.Name,
-					Name:            name,
+					Name:            v.Name,
 					NameLower:       strcase.ToLowerCamel(strings.ToLower(v.Name)),
 					Description:     v.Description,
 					BoilerEnumValue: findBoilerEnumValue(boilerEnum, v.Name),
