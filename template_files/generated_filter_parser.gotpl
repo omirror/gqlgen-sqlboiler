@@ -55,14 +55,14 @@ import (
 						{{- range $field := .Fields }}
 							{{-  if $field.BoilerField.InTable }}
 							{{- if eq $field.BoilerField.Name "CreatedAt" }}
-							case strings.Replace({{ $.Backend.PackageName }}.{{ $model.BoilerModel.Name }}Columns.{{ $field.BoilerField.Name }}, "_at", "", 1):
+							case "created":
 								queryMods = append(queryMods, qmhelper.Where({{ $.Backend.PackageName }}.{{ $model.BoilerModel.Name }}Columns.{{ $field.BoilerField.Name }}, qmhelper.EQ, t.value))
 							{{- else if eq $field.BoilerField.Name "UpdatedAt" }}
-							case strings.Replace({{ $.Backend.PackageName }}.{{ $model.BoilerModel.Name }}Columns.{{ $field.BoilerField.Name }}, "_at", "", 1):
+							case "updated":
 								queryMods = append(queryMods, qmhelper.Where({{ $.Backend.PackageName }}.{{ $model.BoilerModel.Name }}Columns.{{ $field.BoilerField.Name }}, qmhelper.EQ, t.value))
 							{{- else }}
-							case {{ $.Backend.PackageName }}.{{ $model.BoilerModel.Name }}Columns.{{ $field.BoilerField.Name }}:
-								queryMods = append(queryMods, qmhelper.Where(t.qualifier, qmhelper.EQ, t.value))
+							case "{{ $field.BoilerField.Name | camel }}":
+								queryMods = append(queryMods, qmhelper.Where({{ $.Backend.PackageName }}.{{ $model.BoilerModel.Name }}Columns.{{ $field.BoilerField.Name }}, qmhelper.EQ, t.value))
 							{{- end }}
 							{{- end -}}
 						{{- end }}
@@ -71,8 +71,8 @@ import (
 							switch t.value {
 						{{- range $field := .Fields }}
 							{{-  if $field.BoilerField.InTable }}
-							case {{ $.Backend.PackageName }}.{{ $model.BoilerModel.Name }}Columns.{{ $field.BoilerField.Name }}:
-								queryMods = append(queryMods, qmhelper.WhereIsNull(t.value))
+							case "{{ $field.BoilerField.Name | camel }}":
+								queryMods = append(queryMods, qmhelper.WhereIsNull({{ $.Backend.PackageName }}.{{ $model.BoilerModel.Name }}Columns.{{ $field.BoilerField.Name }}))
 							{{- end -}}
 						{{- end }}
 							default:
@@ -102,7 +102,33 @@ import (
 		}
 		
 		func {{ .BoilerModel.Name | lcFirst}}ParseSorting(value string) ([]qm.QueryMod, error) {
-			return nil, nil
+			var a []*models.{{ .BoilerModel.Name}}Order
+		
+			switch value {
+			// default ASC
+			case "id-desc":
+				a = []*models.{{ .BoilerModel.Name}}Order{ {Field: models.{{ .BoilerModel.Name}}SortID, Direction: boilergql.SortDirectionDesc} }
+			case "id", "id-asc":
+				a = []*models.{{ .BoilerModel.Name}}Order{ {Field: models.{{ .BoilerModel.Name}}SortID, Direction: boilergql.SortDirectionAsc} }
+		
+			// default DESC
+			case "created", "created-desc":
+				a = []*models.{{ .BoilerModel.Name}}Order{ {Field: models.{{ .BoilerModel.Name}}SortCreatedAt, Direction: boilergql.SortDirectionDesc} }
+			case "created-asc":
+				a = []*models.{{ .BoilerModel.Name}}Order{ {Field: models.{{ .BoilerModel.Name}}SortCreatedAt, Direction: boilergql.SortDirectionAsc} }
+		
+			// default DESC
+			case "updated", "updated-desc":
+				a = []*models.{{ .BoilerModel.Name}}Order{ {Field: models.{{ .BoilerModel.Name}}SortUpdatedAt, Direction: boilergql.SortDirectionDesc} }
+			case "updated-asc":
+				a = []*models.{{ .BoilerModel.Name}}Order{ {Field: models.{{ .BoilerModel.Name}}SortUpdatedAt, Direction: boilergql.SortDirectionAsc} }
+		
+			default:
+				return nil, fmt.Errorf("unknown sorting %s", value)
+			}
+		
+			defaultDirection := {{ .BoilerModel.Name}}SortDirection(a)
+			return {{ .BoilerModel.Name}}SortMods(a, false, defaultDirection), nil
 		}
 	{{ end }}
 

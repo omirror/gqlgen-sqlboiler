@@ -91,6 +91,8 @@ func GetTemplateContent(cfg Options) (string, error) {
 		"id":      ToGoId,
 		"lcFirst": gqlgenTemplates.LcFirst,
 		"ucFirst": gqlgenTemplates.UcFirst,
+		"camel":   ToCamel,
+		"lower":   ToLowerAndGo,
 	}).Parse(cfg.Template)
 	if err != nil {
 		return "", fmt.Errorf("parse: %v", err)
@@ -140,4 +142,25 @@ func ToGoId(str string) string {
 
 func ToLowerAndGo(name string) string {
 	return ToGo(strings.ToLower(name))
+}
+
+func ToLowerCase(str string) string {
+
+	var b strings.Builder
+
+	b.WriteString(strings.ToLower(string(str[0])))
+	b.WriteString(str[1:])
+
+	return b.String()
+
+}
+
+func ToCamel(str string) string {
+	str = strcase.ToCamel(str)
+
+	if strings.HasSuffix(strings.ToLower(str), "at") {
+		str = strings.Replace(str, "At", "", -1)
+	}
+
+	return ToLowerCase(str)
 }
