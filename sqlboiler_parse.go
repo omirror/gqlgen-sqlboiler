@@ -59,11 +59,11 @@ type BoilerType struct {
 
 // parseModelsAndFieldsFromBoiler since these are like User.ID, User.Organization and we want them grouped by
 // modelName and their belonging fields.
-func GetBoilerModels(dir string) ([]*BoilerModel, []*BoilerEnum) { //nolint:gocognit,gocyclo
+func GetBoilerModels(dir string, blacklist []string) ([]*BoilerModel, []*BoilerEnum) { //nolint:gocognit,gocyclo
 	boilerTypeMap, _, boilerTypeOrder := parseBoilerFile(dir)
 	boilerTypes := getSortedBoilerTypes(boilerTypeMap, boilerTypeOrder)
 	tableNames := parseTableNames(dir)
-	enums := parseEnums(dir)
+	enums := parseEnums(dir, blacklist)
 
 	// sortedModelNames is needed to get the right order back of the models since we want the same order every time
 	// this program has ran.
@@ -92,6 +92,10 @@ func GetBoilerModels(dir string) ([]*BoilerModel, []*BoilerEnum) { //nolint:goco
 		modelName := splitted[0]
 		// result in e.g. ID
 		boilerFieldName := splitted[1]
+
+		if len(blacklist) > 0 && FindInSlice(blacklist, modelName) {
+			continue
+		}
 
 		// handle names with lowercase e.g. userR, userL or other sqlboiler extra's
 		if isFirstCharacterLowerCase(modelName) {
@@ -355,11 +359,12 @@ func parseTableNames(dir string) []string {
 }
 
 var (
-	enumRegex       = regexp.MustCompile(`// Enum values for (\w+).(\w+)\nconst\s\(\n(:?(.|\n)*?)\n\)`) //nolint:gochecknoglobals
-	enumValuesRegex = regexp.MustCompile(`\s(\w+)\s*=\s*"(\w+)"`)                                       //nolint:gochecknoglobals
+	// enumRegex       = regexp.MustCompile(`// Enum values for (\w+).(\w+)\nconst\s\(\n(:?(.|\n)*?)\n\)`) //nolint:gochecknoglobals
+	enumRegex       = regexp.MustCompile(`// Enum values for (\w+)(?:s){1}(\w+)\nconst\s\(\n(:?(.|\n)*?)\n\)`) //nolint:gochecknoglobals
+	enumValuesRegex = regexp.MustCompile(`\s(\w+)\s*=\s*"(\w+)"`)                                              //nolint:gochecknoglobals
 )
 
-func parseEnums(dir string) []*BoilerEnum {
+func parseEnums(dir string, blacklist []string) []*BoilerEnum {
 	dir, err := filepath.Abs(dir)
 	errMessage := "could not open enum names file, this could not lead to problems if you're " +
 		"using enums in your db"
@@ -373,18 +378,29 @@ func parseEnums(dir string) []*BoilerEnum {
 		return nil
 	}
 	matches := enumRegex.FindAllStringSubmatch(string(content), -1)
-	a := make([]*BoilerEnum, len(matches))
-	for i, match := range matches {
+	// a := make([]*BoilerEnum, len(matches))
+	var a []*BoilerEnum
+	for _, match := range matches {
 		// 1: message_letter
 		// 2: status
 		// 3: contents
 
-		a[i] = &BoilerEnum{
+		if strings.EqualFold(match[1], "inboxe") {
+			match[1] = "Inbox"
+		}
+
+		if len(blacklist) > 0 && FindInSlice(blacklist, strcase.ToCamel(match[1])) {
+			continue
+		}
+
+		e := &BoilerEnum{
 			Name:          strcase.ToCamel(match[1] + "_" + match[2]),
 			ModelName:     strcase.ToCamel(match[1]),
 			ModelFieldKey: strcase.ToCamel(match[2]),
 			Values:        parseEnumValues(match[3]),
 		}
+
+		a = append(a, e)
 	}
 	return a
 }

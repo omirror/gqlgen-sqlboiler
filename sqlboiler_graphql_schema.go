@@ -23,6 +23,7 @@ type SchemaConfig struct {
 	BoilerModelDirectory Config
 	Directives           []string
 	SkipInputFields      []string
+	Blacklist            []string
 	GenerateBatchCreate  bool
 	GenerateMutations    bool
 	GenerateBatchDelete  bool
@@ -142,7 +143,7 @@ func SchemaGet(
 	w := &SimpleWriter{}
 
 	// Parse models and their fields based on the sqlboiler model directory
-	boilerModels, boilerEnums := GetBoilerModels(config.BoilerModelDirectory.Directory)
+	boilerModels, boilerEnums := GetBoilerModels(config.BoilerModelDirectory.Directory, config.Blacklist)
 	models := executeHooksOnModels(boilerModelsToModels(boilerModels), config)
 
 	fullDirectives := make([]string, len(config.Directives))
@@ -189,7 +190,9 @@ func SchemaGet(
 		//	enum UserRole { ADMIN, USER }
 		w.l("enum " + enum.Name + " {")
 		for _, v := range enum.Values {
-			w.tl(strcase.ToScreamingSnake(strings.TrimPrefix(v.Name, enum.Name)))
+			// w.tl(strcase.ToScreamingSnake(strings.TrimPrefix(v.Name, enum.Name)))
+			w.tl(strcase.ToScreamingSnake(strings.TrimPrefix(v.Name, Plural(enum.ModelName)+enum.ModelFieldKey)))
+
 		}
 		w.l("}")
 
@@ -315,7 +318,10 @@ func SchemaGet(
 				relationName := getRelationName(field)
 				w.tl(relationName + ": " + field.BoilerField.Relationship.Name + "Where" + directives)
 			} else {
-				w.tl(field.Name + ": " + getFilterType(field) + "Filter" + directives)
+				// Skip Map Fields
+				if !strings.EqualFold(getFilterType(field), "map") {
+					w.tl(field.Name + ": " + getFilterType(field) + "Filter" + directives)
+				}
 			}
 		}
 		w.tl("or: " + model.Name + "Where")
@@ -551,7 +557,10 @@ func fieldAsEnumStrings(fields []*SchemaField) []string {
 	var enums []string
 	for _, field := range fields {
 		if field.BoilerField != nil && (!field.BoilerField.IsRelation && !field.BoilerField.IsForeignKey) {
-			enums = append(enums, strcase.ToScreamingSnake(field.Name))
+			//Skip Map Fields
+			if !strings.EqualFold(getFilterType(field), "map") {
+				enums = append(enums, strcase.ToScreamingSnake(field.Name))
+			}
 		}
 	}
 	return enums
@@ -854,6 +863,15 @@ func writeContentToFile(content string, filename string) error {
 	}
 
 	return nil
+}
+
+func FindInSlice(slice []string, val string) bool {
+	for _, item := range slice {
+		if item == val {
+			return true
+		}
+	}
+	return false
 }
 
 type SimpleWriter struct {

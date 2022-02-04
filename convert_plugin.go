@@ -181,6 +181,7 @@ type ConvertPlugin struct {
 	Output         Config
 	Backend        Config
 	Frontend       Config
+	Types          Config
 	PluginConfig   ConvertPluginConfig
 	rootImportPath string
 }
@@ -203,6 +204,7 @@ const (
 
 type ConvertPluginConfig struct {
 	DatabaseDriver DatabaseDriver
+	Blacklist      []string
 }
 
 var _ plugin.ConfigMutator = &ConvertPlugin{}
@@ -269,7 +271,7 @@ func (m *ConvertPlugin) MutateConfig(originalCfg *config.Config) error {
 	// log.Debug().Msg("[customization] looking for *_customized files")
 
 	log.Debug().Msg("[convert] get boiler models")
-	boilerModels, boilerEnums := GetBoilerModels(m.Backend.Directory)
+	boilerModels, boilerEnums := GetBoilerModels(m.Backend.Directory, m.PluginConfig.Blacklist)
 
 	// get models based on the schema and sqlboiler structs
 	log.Debug().Msg("[convert] enhance model with information")
@@ -934,7 +936,8 @@ func findBoilerEnum(enums []*BoilerEnum, graphType string) *BoilerEnum {
 func findBoilerEnumValue(enum *BoilerEnum, name string) *BoilerEnumValue {
 	if enum != nil {
 		for _, v := range enum.Values {
-			boilerName := strings.TrimPrefix(v.Name, enum.Name)
+			// boilerName := strings.TrimPrefix(v.Name, enum.Name)
+			boilerName := strings.TrimPrefix(v.Name, Plural(enum.ModelName)+enum.ModelFieldKey)
 			frontendName := strings.Replace(name, "_", "", -1)
 			if strings.EqualFold(boilerName, frontendName) {
 				return v

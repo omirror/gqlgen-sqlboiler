@@ -11,10 +11,12 @@ import (
 	"os"
 	"strings"
 	"text/template"
+	"unicode"
 
 	"github.com/rs/zerolog/log"
 
 	"github.com/iancoleman/strcase"
+	"github.com/volatiletech/strmangle"
 
 	"golang.org/x/tools/imports"
 
@@ -87,12 +89,14 @@ func WriteTemplateFile(fileName string, cfg Options) error {
 
 func GetTemplateContent(cfg Options) (string, error) {
 	tpl, err := template.New("").Funcs(template.FuncMap{
-		"go":      gqlgenTemplates.ToGo,
-		"id":      ToGoId,
-		"lcFirst": gqlgenTemplates.LcFirst,
-		"ucFirst": gqlgenTemplates.UcFirst,
-		"camel":   ToCamel,
-		"lower":   ToLowerAndGo,
+		"go":       gqlgenTemplates.ToGo,
+		"id":       ToGoId,
+		"lcFirst":  gqlgenTemplates.LcFirst,
+		"ucFirst":  gqlgenTemplates.UcFirst,
+		"camel":    ToCamel,
+		"lower":    ToLowerAndGo,
+		"plural":   ToPlural,
+		"singular": ToSingular,
 	}).Parse(cfg.Template)
 	if err != nil {
 		return "", fmt.Errorf("parse: %v", err)
@@ -163,4 +167,40 @@ func ToCamel(str string) string {
 	}
 
 	return ToLowerCase(str)
+}
+
+func isFirstCharacterLowerCase(s string) bool {
+	if len(s) > 0 && s[0] == strings.ToLower(s)[0] {
+		return true
+	}
+	return false
+}
+
+// TaskBlockedBies -> TaskBlockedBy
+// People -> Person
+func ToSingular(s string) string {
+	singular := strmangle.Singular(strcase.ToSnake(s))
+
+	singularTitle := strmangle.TitleCase(singular)
+	if isFirstCharacterLowerCase(s) {
+		a := []rune(singularTitle)
+		a[0] = unicode.ToLower(a[0])
+		return string(a)
+	}
+	return singularTitle
+}
+
+// TaskBlockedBy -> TaskBlockedBies
+// Person -> Persons
+// Person -> People
+func ToPlural(s string) string {
+	plural := strmangle.Plural(strcase.ToSnake(s))
+
+	pluralTitle := strmangle.TitleCase(plural)
+	if isFirstCharacterLowerCase(s) {
+		a := []rune(pluralTitle)
+		a[0] = unicode.ToLower(a[0])
+		return string(a)
+	}
+	return pluralTitle
 }
