@@ -24,7 +24,6 @@ type SchemaConfig struct {
 	Directives           []string
 	SkipInputFields      []string
 	SkipSortFields       []string
-	SkipModels           []string
 	GenerateBatchCreate  bool
 	GenerateMutations    bool
 	GenerateBatchDelete  bool
@@ -54,7 +53,6 @@ type SchemaField struct {
 	InputBatchUpdateType string
 	InputBatchCreateType string
 	BoilerField          *BoilerField
-	SkipSort             bool
 	SkipInput            bool
 	SkipWhere            bool
 	SkipCreate           bool
@@ -145,8 +143,11 @@ func SchemaGet(
 	w := &SimpleWriter{}
 
 	// Parse models and their fields based on the sqlboiler model directory
-	boilerModels, boilerEnums := GetBoilerModels(config.BoilerModelDirectory.Directory, config.SkipModels)
+	boilerModels, boilerEnums := GetBoilerModels(config.BoilerModelDirectory.Directory)
 	models := executeHooksOnModels(boilerModelsToModels(boilerModels), config)
+
+	// Skip enums for ignored models
+	enums := executeHooksOnEnums(boilerEnums, models)
 
 	fullDirectives := make([]string, len(config.Directives))
 	for i, defaultDirective := range config.Directives {
@@ -184,7 +185,7 @@ func SchemaGet(
 	// Add helpers for filtering lists
 	w.l(queryHelperStructs)
 
-	for _, enum := range boilerEnums {
+	for _, enum := range enums {
 
 		//	enum UserRoleFilter { ADMIN, USER }
 		w.l(fmt.Sprintf(enumFilterHelper, enum.Name))
@@ -202,7 +203,7 @@ func SchemaGet(
 	}
 
 	// Generate sorting helpers
-	w.l("enum SortDirection { ASC, DESC }")
+	w.l("enum OrderDirection { ASC, DESC }")
 	w.br()
 
 	for _, model := range models {
@@ -211,6 +212,7 @@ func SchemaGet(
 		w.l("enum " + model.Name + "Sort {")
 		filteredFields := fieldsWithout(model.Fields, config.SkipSortFields)
 
+		// log.Info().Str("Sort Model", model.Name).Msg("[schema]")
 		for _, v := range fieldAsEnumStrings(filteredFields) {
 			w.tl(v)
 		}
@@ -224,7 +226,7 @@ func SchemaGet(
 		//	}
 		w.l("input " + model.Name + "Ordering {")
 		w.tl("sort: " + model.Name + "Sort!")
-		w.tl("direction: SortDirection! = ASC")
+		w.tl("direction: OrderDirection! = ASC")
 		w.l("}")
 
 		w.br()
@@ -560,13 +562,9 @@ func enhanceFields(config SchemaConfig, model *SchemaModel, fields []*SchemaFiel
 func fieldAsEnumStrings(fields []*SchemaField) []string {
 	var enums []string
 	for _, field := range fields {
-		// Skip this field
-		if field.SkipSort {
-			continue
-		}
 
 		if field.BoilerField != nil && (!field.BoilerField.IsRelation && !field.BoilerField.IsForeignKey) {
-			log.Debug().Str("Sort Field", field.Name).Msg("[schema]")
+			// log.Debug().Str("Sort Field", field.Name).Msg("[schema]")
 
 			//Skip Map type Fields Ugly hack
 			if !strings.EqualFold(getFilterType(field), "map") {
@@ -607,6 +605,7 @@ func boilerModelsToModels(boilerModels []*BoilerModel) []*SchemaModel {
 func executeHooksOnModels(models []*SchemaModel, config SchemaConfig) []*SchemaModel {
 	var a []*SchemaModel
 	for _, m := range models {
+
 		if config.HookShouldAddModel != nil && !config.HookShouldAddModel(*m) {
 			continue
 		}
@@ -626,6 +625,26 @@ func executeHooksOnModels(models []*SchemaModel, config SchemaConfig) []*SchemaM
 		}
 
 		a = append(a, m)
+
+	}
+	return a
+}
+
+func executeHooksOnEnums(enums []*BoilerEnum, models []*SchemaModel) []*BoilerEnum {
+	var a []*BoilerEnum
+
+	for _, e := range enums {
+		var skipped bool
+
+		for _, skip := range models {
+			if !strings.HasSuffix(e.ModelName, skip.Name) {
+				skipped = true
+			}
+		}
+
+		if !skipped {
+			a = append(a, e)
+		}
 
 	}
 	return a

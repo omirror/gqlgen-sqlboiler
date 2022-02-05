@@ -59,14 +59,11 @@ type BoilerType struct {
 
 // parseModelsAndFieldsFromBoiler since these are like User.ID, User.Organization and we want them grouped by
 // modelName and their belonging fields.
-func GetBoilerModels(dir string, skipModels []string) ([]*BoilerModel, []*BoilerEnum) { //nolint:gocognit,gocyclo
+func GetBoilerModels(dir string) ([]*BoilerModel, []*BoilerEnum) { //nolint:gocognit,gocyclo
 	boilerTypeMap, _, boilerTypeOrder := parseBoilerFile(dir)
 	boilerTypes := getSortedBoilerTypes(boilerTypeMap, boilerTypeOrder)
 	tableNames := parseTableNames(dir)
 	enums := parseEnums(dir)
-
-	// Skip enums for ignored models
-	enums = boilerEnumsWithout(enums, skipModels)
 
 	// sortedModelNames is needed to get the right order back of the models since we want the same order every time
 	// this program has ran.
@@ -96,9 +93,9 @@ func GetBoilerModels(dir string, skipModels []string) ([]*BoilerModel, []*Boiler
 		// result in e.g. ID
 		boilerFieldName := splitted[1]
 
-		if len(skipModels) > 0 && sliceContains(skipModels, modelName) {
-			continue
-		}
+		// if len(skipModels) > 0 && sliceContains(skipModels, modelName) {
+		// 	continue
+		// }
 
 		// handle names with lowercase e.g. userR, userL or other sqlboiler extra's
 		if isFirstCharacterLowerCase(modelName) {
@@ -562,25 +559,4 @@ func parseBoilerFile(dir string) (map[string]string, map[string]string, map[stri
 	//fmt.Println(" ")
 
 	return fieldsMap, structsMap, fieldsOrder
-}
-
-func boilerEnumsWithout(enums []*BoilerEnum, skip []string) []*BoilerEnum {
-	// lol: cleanup xD
-	var a []*BoilerEnum
-	for _, e := range enums {
-		var skipped bool
-		for _, skip := range skip {
-			if strings.HasSuffix(e.ModelName, skip) {
-				skipped = true
-			}
-		}
-		if !skipped {
-			a = append(a, e)
-		}
-
-		// if len(skip) > 0 && sliceContains(skip, e.ModelName) {
-		// 	continue
-		// }
-	}
-	return a
 }
