@@ -35,7 +35,7 @@ type AuthorizationScope struct {
 type ResolverPluginConfig struct {
 	EnableSoftDeletes   bool
 	AuthorizationScopes []*AuthorizationScope
-	Blacklist           []string
+	SkipModels          []string
 }
 
 type ResolverPlugin struct {
@@ -62,7 +62,7 @@ func (m *ResolverPlugin) GenerateCode(data *codegen.Data) error {
 
 	// Get all models information
 	log.Debug().Msg("[resolver] get boiler models")
-	boilerModels, _ := GetBoilerModels(m.backend.Directory, m.pluginConfig.Blacklist)
+	boilerModels, _ := GetBoilerModels(m.backend.Directory, m.pluginConfig.SkipModels)
 	log.Debug().Msg("[resolver] get models")
 	baseModels := getModelsFromSchema(data.Schema, boilerModels)
 	log.Debug().Msg("[resolver] enhance models with information")

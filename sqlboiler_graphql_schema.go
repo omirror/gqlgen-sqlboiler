@@ -23,7 +23,8 @@ type SchemaConfig struct {
 	BoilerModelDirectory Config
 	Directives           []string
 	SkipInputFields      []string
-	Blacklist            []string
+	SkipSortFields       []string
+	SkipModels           []string
 	GenerateBatchCreate  bool
 	GenerateMutations    bool
 	GenerateBatchDelete  bool
@@ -53,6 +54,7 @@ type SchemaField struct {
 	InputBatchUpdateType string
 	InputBatchCreateType string
 	BoilerField          *BoilerField
+	SkipSort             bool
 	SkipInput            bool
 	SkipWhere            bool
 	SkipCreate           bool
@@ -143,7 +145,7 @@ func SchemaGet(
 	w := &SimpleWriter{}
 
 	// Parse models and their fields based on the sqlboiler model directory
-	boilerModels, boilerEnums := GetBoilerModels(config.BoilerModelDirectory.Directory, config.Blacklist)
+	boilerModels, boilerEnums := GetBoilerModels(config.BoilerModelDirectory.Directory, config.SkipModels)
 	models := executeHooksOnModels(boilerModelsToModels(boilerModels), config)
 
 	fullDirectives := make([]string, len(config.Directives))
@@ -207,7 +209,9 @@ func SchemaGet(
 
 		//	enum UserSort { FIRST_NAME, LAST_NAME }
 		w.l("enum " + model.Name + "Sort {")
-		for _, v := range fieldAsEnumStrings(model.Fields) {
+		filteredFields := fieldsWithout(model.Fields, config.SkipSortFields)
+
+		for _, v := range fieldAsEnumStrings(filteredFields) {
 			w.tl(v)
 		}
 		w.l("}")
@@ -556,11 +560,18 @@ func enhanceFields(config SchemaConfig, model *SchemaModel, fields []*SchemaFiel
 func fieldAsEnumStrings(fields []*SchemaField) []string {
 	var enums []string
 	for _, field := range fields {
+		// Skip this field
+		if field.SkipSort {
+			continue
+		}
+
 		if field.BoilerField != nil && (!field.BoilerField.IsRelation && !field.BoilerField.IsForeignKey) {
-			//Skip Map Fields
+
+			//Skip Map Fields Ugly hack
 			if !strings.EqualFold(getFilterType(field), "map") {
 				enums = append(enums, strcase.ToScreamingSnake(field.Name))
 			}
+			log.Debug().Str("Sort Field", field.Name).Msg("[schema]")
 		}
 	}
 	return enums
@@ -863,15 +874,6 @@ func writeContentToFile(content string, filename string) error {
 	}
 
 	return nil
-}
-
-func FindInSlice(slice []string, val string) bool {
-	for _, item := range slice {
-		if item == val {
-			return true
-		}
-	}
-	return false
 }
 
 type SimpleWriter struct {

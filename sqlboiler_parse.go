@@ -59,11 +59,11 @@ type BoilerType struct {
 
 // parseModelsAndFieldsFromBoiler since these are like User.ID, User.Organization and we want them grouped by
 // modelName and their belonging fields.
-func GetBoilerModels(dir string, blacklist []string) ([]*BoilerModel, []*BoilerEnum) { //nolint:gocognit,gocyclo
+func GetBoilerModels(dir string, skipModels []string) ([]*BoilerModel, []*BoilerEnum) { //nolint:gocognit,gocyclo
 	boilerTypeMap, _, boilerTypeOrder := parseBoilerFile(dir)
 	boilerTypes := getSortedBoilerTypes(boilerTypeMap, boilerTypeOrder)
 	tableNames := parseTableNames(dir)
-	enums := parseEnums(dir, blacklist)
+	enums := parseEnums(dir, skipModels)
 
 	// sortedModelNames is needed to get the right order back of the models since we want the same order every time
 	// this program has ran.
@@ -93,7 +93,7 @@ func GetBoilerModels(dir string, blacklist []string) ([]*BoilerModel, []*BoilerE
 		// result in e.g. ID
 		boilerFieldName := splitted[1]
 
-		if len(blacklist) > 0 && FindInSlice(blacklist, modelName) {
+		if len(skipModels) > 0 && sliceContains(skipModels, modelName) {
 			continue
 		}
 
@@ -364,7 +364,7 @@ var (
 	enumValuesRegex = regexp.MustCompile(`\s(\w+)\s*=\s*"(\w+)"`)                                              //nolint:gochecknoglobals
 )
 
-func parseEnums(dir string, blacklist []string) []*BoilerEnum {
+func parseEnums(dir string, skipModels []string) []*BoilerEnum {
 	dir, err := filepath.Abs(dir)
 	errMessage := "could not open enum names file, this could not lead to problems if you're " +
 		"using enums in your db"
@@ -389,7 +389,7 @@ func parseEnums(dir string, blacklist []string) []*BoilerEnum {
 			match[1] = "Inbox"
 		}
 
-		if len(blacklist) > 0 && FindInSlice(blacklist, strcase.ToCamel(match[1])) {
+		if len(skipModels) > 0 && sliceContains(skipModels, strcase.ToCamel(match[1])) {
 			continue
 		}
 

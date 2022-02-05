@@ -24,21 +24,20 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/queries/qmhelper"
-	"github.com/volatiletech/sqlboiler/v4/types"
 	"github.com/volatiletech/null/v8"
 
 	"gleez.io/vdesk/util/boilergql"
 	
-	{{ range $import := .Imports }}
-		{{ $import.Alias }} "{{ $import.ImportPath }}"
+	"gleez.io/vdesk/types"
+	{{- range $import := .Imports }}
+		"{{ $import.ImportPath }}"
 	{{ end }}
 )
 
 
-
 {{ range $model := .Models }}
 
-        {{- if .IsOrdering -}}
+    {{- if .IsOrdering -}}
 
 		{{- range $field := .Fields -}}
 			{{- if eq $field.Name "Sort" -}}
@@ -47,7 +46,20 @@ import (
 						{{ $.Frontend.PackageName }}.{{ $field.Enum.Name|go }}{{ .Name|go }}: {{ $.Backend.PackageName }}.{{ $model.BoilerModel.Name }}Columns.{{ $value.Name|id }},
 					{{- end }}
 				}
+			{{ end }}
+		{{- end }}
+		
+    {{ end }}
 
+{{ end }}	
+
+
+{{ range $model := .Models }}
+
+        {{- if .IsOrdering -}}
+		
+		{{- range $field := .Fields -}}
+			{{- if eq $field.Name "Sort" -}}
 				func {{ $model.BoilerModel.Name }}SortValueFromCursorValue(cursorValue string) (string, interface{}) {
 					key, value := boilergql.FromCursorValue(cursorValue)
 					column := {{ $model.BoilerModel.Name }}SortColumn[{{ $.Frontend.PackageName }}.{{ $model.BoilerModel.Name }}Sort(key)]
@@ -113,26 +125,26 @@ import (
 				{{- range $field := .Fields -}}
 					{{- if eq $field.Name "Sort" -}}
 						{{- range $value := $field.Enum.Values -}}
-							{{ if eq $value.Name "Id" }}
-							if order.Sort == {{ $.Frontend.PackageName }}.{{ $field.Enum.Name|go }}{{ .Name|go }} {
+							{{ if eq $value.Name "ID" }}
+							if order.Field == {{ $.Frontend.PackageName }}.{{ $field.Enum.Name|go }}{{ .Name|go }} {
 								handledID = true
 							}
 							{{ end }}
 						{{- end -}}
 					{{- end -}}
 				{{- end -}}
-				value := {{ .BoilerModel.Name }}SortCursorValue(order.Sort, m)
+				value := {{ .BoilerModel.Name }}SortCursorValue(order.Field, m)
 				if value != nil {
-					a = append(a, boilergql.ToCursorValue(string(order.Sort), value))
+					a = append(a, boilergql.ToCursorValue(string(order.Field), value))
 				}
 			}
 
 			{{- range $field := .Fields -}}
 				{{- if eq $field.Name "Sort" -}}
 					{{- range $value := $field.Enum.Values}}
-						{{ if eq $value.Name "Id" }}
+						{{ if eq $value.Name "ID" }}
 							if !handledID {
-								a = append(a, boilergql.ToCursorValue(string({{ $.Frontend.PackageName }}.{{ $field.Enum.Name|go }}{{ .Name|go }}), m.Id))
+								a = append(a, boilergql.ToCursorValue(string({{ $.Frontend.PackageName }}.{{ $field.Enum.Name|go }}{{ .Name|go }}), m.ID))
 							}
 						{{ end }}
 				{{- end -}}
@@ -169,8 +181,8 @@ import (
 				{{- range $field := .Fields -}}
 					{{- if eq $field.Name "Sort" -}}
 						{{- range $value := $field.Enum.Values -}}
-							{{ if eq $value.Name "Id" }}
-								if order.Sort == {{ $.Frontend.PackageName }}.{{ $field.Enum.Name|go }}{{ .Name|go }} {
+							{{ if eq $value.Name "ID" }}
+								if order.Field == {{ $.Frontend.PackageName }}.{{ $field.Enum.Name|go }}{{ .Name|go }} {
 									handledID = true
 								}
 							{{ end }}
@@ -178,7 +190,7 @@ import (
 					{{- end -}}
 				{{- end -}}
 
-				column := {{ .BoilerModel.Name }}SortColumn[order.Sort]
+				column := {{ .BoilerModel.Name }}SortColumn[order.Field]
 				if column != "" {
 					a = append(a, qm.OrderBy(boilergql.GetOrderBy(
 						column,
@@ -234,7 +246,7 @@ import (
 
 		func {{ .BoilerModel.Name }}ReversePageInformation(
 			ctx context.Context,
-			db *sql.DB,
+			srv types.Store,
 			pagination boilergql.ConnectionPagination,
 			ordering []*{{ $.Frontend.PackageName }}.{{ .BoilerModel.Name }}Ordering,
 		) (bool, error) {
@@ -242,7 +254,7 @@ import (
 			cursor, reverseMods := {{ .BoilerModel.Name }}PaginationModsBase(pagination, ordering, reverse, 1)
 			cursorType := {{ .BoilerModel.Name }}CursorType(ordering)
 			return boilergql.HasReversePage(cursor, pagination, cursorType, func() (int64, error) {
-				return {{ $.Backend.PackageName }}.{{ .BoilerModel.PluralName }}(reverseMods...).Count(ctx, db)
+				return srv.{{ .BoilerModel.Name }}().Total(reverseMods...)
 			})
 		}
 
@@ -274,7 +286,7 @@ import (
 
 		func {{ .BoilerModel.Name }}Connection(
 			ctx context.Context,
-			db *sql.DB,
+			srv types.Store,
 			originalMods []qm.QueryMod,
 			pagination boilergql.ConnectionPagination,
 			ordering []*{{ $.Frontend.PackageName }}.{{ .BoilerModel.Name }}Ordering,
@@ -284,12 +296,12 @@ import (
 				return nil, err
 			}
 
-			hasMoreReversed, err := {{ .BoilerModel.Name }}ReversePageInformation(ctx, db, pagination, ordering)
+			hasMoreReversed, err := {{ .BoilerModel.Name }}ReversePageInformation(ctx, srv, pagination, ordering)
 			if err != nil {
 				return nil, err
 			}
 
-			a, err := {{ $.Backend.PackageName }}.{{ .BoilerModel.PluralName }}(append(originalMods, paginationMods...)...).All(ctx, db)
+			a, err := srv.{{ .BoilerModel.Name }}().FindAll(append(originalMods, paginationMods...)...)
 			if err != nil {
 				return nil, err
 			}

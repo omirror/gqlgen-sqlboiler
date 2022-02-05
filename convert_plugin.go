@@ -204,7 +204,7 @@ const (
 
 type ConvertPluginConfig struct {
 	DatabaseDriver DatabaseDriver
-	Blacklist      []string
+	SkipModels     []string
 }
 
 var _ plugin.ConfigMutator = &ConvertPlugin{}
@@ -271,7 +271,7 @@ func (m *ConvertPlugin) MutateConfig(originalCfg *config.Config) error {
 	// log.Debug().Msg("[customization] looking for *_customized files")
 
 	log.Debug().Msg("[convert] get boiler models")
-	boilerModels, boilerEnums := GetBoilerModels(m.Backend.Directory, m.PluginConfig.Blacklist)
+	boilerModels, boilerEnums := GetBoilerModels(m.Backend.Directory, m.PluginConfig.SkipModels)
 
 	// get models based on the schema and sqlboiler structs
 	log.Debug().Msg("[convert] enhance model with information")
