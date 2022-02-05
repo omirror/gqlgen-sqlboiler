@@ -35,6 +35,7 @@ type AuthorizationScope struct {
 type ResolverPluginConfig struct {
 	EnableSoftDeletes   bool
 	AuthorizationScopes []*AuthorizationScope
+	Templates           string
 }
 
 type ResolverPlugin struct {
@@ -149,7 +150,7 @@ func (m *ResolverPlugin) generateSingleFile(data *codegen.Data, models []*Model,
 	}
 
 	templateName := "generated_resolver.gotpl"
-	templateContent, err := getTemplateContent(templateName)
+	templateContent, err := getTemplateContent(templateName, m.pluginConfig.Templates)
 	if err != nil {
 		log.Err(err).Msg("error when reading " + templateName)
 		return err

@@ -204,6 +204,7 @@ const (
 
 type ConvertPluginConfig struct {
 	DatabaseDriver DatabaseDriver
+	Templates      string
 }
 
 var _ plugin.ConfigMutator = &ConvertPlugin{}
@@ -320,7 +321,7 @@ func (m *ConvertPlugin) MutateConfig(originalCfg *config.Config) error {
 		templateName := fileName + "tpl"
 		log.Debug().Msg("[convert] render " + templateName)
 
-		templateContent, err := getTemplateContent(templateName)
+		templateContent, err := getTemplateContent(templateName, m.PluginConfig.Templates)
 		if err != nil {
 			log.Err(err).Msg("error when reading " + templateName)
 			continue
@@ -369,11 +370,19 @@ func enumsWithout(enums []*Enum, skip []string) []*Enum {
 	return a
 }
 
-func getTemplateContent(filename string) (string, error) {
-	// load path relative to calling source file
-	_, callerFile, _, _ := runtime.Caller(1) //nolint:dogsled
-	rootDir := filepath.Dir(callerFile)
-	content, err := ioutil.ReadFile(path.Join(rootDir, "template_files", filename))
+func getTemplateContent(filename string, customTemplates string) (string, error) {
+	var err error
+	var content []byte
+
+	if customTemplates != "" {
+		content, err = ioutil.ReadFile(path.Join(customTemplates, filename))
+	} else {
+		// load path relative to calling source file
+		_, callerFile, _, _ := runtime.Caller(1) //nolint:dogsled
+		rootDir := filepath.Dir(callerFile)
+		content, err = ioutil.ReadFile(path.Join(rootDir, "template_files", filename))
+	}
+
 	if err != nil {
 		return "", fmt.Errorf("could not read template file: %v", err)
 	}
