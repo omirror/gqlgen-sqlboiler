@@ -566,12 +566,12 @@ func fieldAsEnumStrings(fields []*SchemaField) []string {
 		}
 
 		if field.BoilerField != nil && (!field.BoilerField.IsRelation && !field.BoilerField.IsForeignKey) {
+			log.Debug().Str("Sort Field", field.Name).Msg("[schema]")
 
-			//Skip Map Fields Ugly hack
+			//Skip Map type Fields Ugly hack
 			if !strings.EqualFold(getFilterType(field), "map") {
 				enums = append(enums, strcase.ToScreamingSnake(field.Name))
 			}
-			log.Debug().Str("Sort Field", field.Name).Msg("[schema]")
 		}
 	}
 	return enums

@@ -37,8 +37,8 @@ import (
 
 {{ range $model := .Models }}
 
-    {{- if .IsOrdering -}}
-
+        {{- if .IsOrdering -}}
+		
 		{{- range $field := .Fields -}}
 			{{- if eq $field.Name "Sort" -}}
 				var {{ $field.Enum.Name }}Column = map[{{ $.Frontend.PackageName }}.{{$field.Enum.Name}}]string{
@@ -46,20 +46,7 @@ import (
 						{{ $.Frontend.PackageName }}.{{ $field.Enum.Name|go }}{{ .Name|go }}: {{ $.Backend.PackageName }}.{{ $model.BoilerModel.Name }}Columns.{{ $value.Name|id }},
 					{{- end }}
 				}
-			{{ end }}
-		{{- end }}
-		
-    {{ end }}
 
-{{ end }}	
-
-
-{{ range $model := .Models }}
-
-        {{- if .IsOrdering -}}
-		
-		{{- range $field := .Fields -}}
-			{{- if eq $field.Name "Sort" -}}
 				func {{ $model.BoilerModel.Name }}SortValueFromCursorValue(cursorValue string) (string, interface{}) {
 					key, value := boilergql.FromCursorValue(cursorValue)
 					column := {{ $model.BoilerModel.Name }}SortColumn[{{ $.Frontend.PackageName }}.{{ $model.BoilerModel.Name }}Sort(key)]

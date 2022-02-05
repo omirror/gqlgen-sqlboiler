@@ -6,7 +6,7 @@ import (
 	"go/ast"
 	"go/format"
 	"go/parser"
-	"go/printer"
+	// "go/printer"
 	"go/token"
 	"os"
 	"strings"
@@ -53,7 +53,7 @@ func WriteTemplateFile(fileName string, cfg Options) error {
 	importFixedContent, importsError := imports.Process(fileName, []byte(content), nil)
 
 	fSet := token.NewFileSet()
-	node, err := parser.ParseFile(fSet, "src.go", string(importFixedContent), 0)
+	node, err := parser.ParseFile(fSet, "src.go", string(importFixedContent), parser.ParseComments)
 	if err != nil {
 		log.Error().Err(err).Msg("could not parse golang file")
 	}
@@ -74,7 +74,11 @@ func WriteTemplateFile(fileName string, cfg Options) error {
 		}
 	}()
 
-	if err := printer.Fprint(f, fSet, node); err != nil {
+	// if err := printer.Fprint(f, fSet, node); err != nil {
+	// 	return fmt.Errorf("errors while printing template to %v  %v", fileName, err)
+	// }
+
+	if err := format.Node(f, fSet, node); err != nil {
 		return fmt.Errorf("errors while printing template to %v  %v", fileName, err)
 	}
 

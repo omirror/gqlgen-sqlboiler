@@ -285,7 +285,7 @@ func (m *ConvertPlugin) MutateConfig(originalCfg *config.Config) error {
 
 	b.Models = models
 	b.Interfaces = interfaces
-	b.Enums = enumsWithout(enums, []string{"SortDirection", "Sort"})
+	b.Enums = enumsWithout(enums, []string{"OrderDirection", "SortDirection", "Sort"})
 	b.Scalars = scalars
 	if len(b.Models) == 0 {
 		log.Warn().Msg("no models found in graphql so skipping generation")
@@ -297,10 +297,6 @@ func (m *ConvertPlugin) MutateConfig(originalCfg *config.Config) error {
 	// 	for _, field := range model.Fields {
 	// 		fmt.Println("    ", field.Name, field.Type)
 	// 		fmt.Println("    ", field.BoilerField.Name, field.BoilerField.Type)
-
-	// 		// if model.Name == "Account" {
-	// 		// 	log.Debug().Str("Name", field.Name).Str("Type", field.Type).Msg("Fields")
-	// 		// }
 	// 	}
 	// }
 
@@ -508,6 +504,8 @@ func enhanceModelsWithFields(enums []*Enum, schema *ast.Schema, cfg *config.Conf
 			if isPrimaryNumberID || isPrimaryStringID {
 				m.PrimaryKeyType = boilerField.Type
 			}
+
+			// log.Debug().Str("Name", name).Str("M.Name", m.Name).Msg("[convert]")
 
 			isEdges := strings.HasSuffix(m.Name, "Connection") && name == "Edges"
 			isPageInfo := strings.HasSuffix(m.Name, "Connection") && name == "PageInfo"
@@ -892,6 +890,7 @@ func getBaseModelFromName(v string) string {
 	v = safeTrim(v, "Where")
 	v = safeTrim(v, "Filter")
 	v = safeTrim(v, "Ordering")
+	v = safeTrim(v, "Order")
 	v = safeTrim(v, "Edge")
 	v = safeTrim(v, "Connection")
 

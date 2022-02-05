@@ -63,7 +63,10 @@ func GetBoilerModels(dir string, skipModels []string) ([]*BoilerModel, []*Boiler
 	boilerTypeMap, _, boilerTypeOrder := parseBoilerFile(dir)
 	boilerTypes := getSortedBoilerTypes(boilerTypeMap, boilerTypeOrder)
 	tableNames := parseTableNames(dir)
-	enums := parseEnums(dir, skipModels)
+	enums := parseEnums(dir)
+
+	// Skip enums for ignored models
+	enums = boilerEnumsWithout(enums, skipModels)
 
 	// sortedModelNames is needed to get the right order back of the models since we want the same order every time
 	// this program has ran.
@@ -364,7 +367,7 @@ var (
 	enumValuesRegex = regexp.MustCompile(`\s(\w+)\s*=\s*"(\w+)"`)                                              //nolint:gochecknoglobals
 )
 
-func parseEnums(dir string, skipModels []string) []*BoilerEnum {
+func parseEnums(dir string) []*BoilerEnum {
 	dir, err := filepath.Abs(dir)
 	errMessage := "could not open enum names file, this could not lead to problems if you're " +
 		"using enums in your db"
@@ -385,12 +388,9 @@ func parseEnums(dir string, skipModels []string) []*BoilerEnum {
 		// 2: status
 		// 3: contents
 
+		// Ugly Hack for inbox model name: Inboxes
 		if strings.EqualFold(match[1], "inboxe") {
 			match[1] = "Inbox"
-		}
-
-		if len(skipModels) > 0 && sliceContains(skipModels, strcase.ToCamel(match[1])) {
-			continue
 		}
 
 		e := &BoilerEnum{
@@ -562,4 +562,25 @@ func parseBoilerFile(dir string) (map[string]string, map[string]string, map[stri
 	//fmt.Println(" ")
 
 	return fieldsMap, structsMap, fieldsOrder
+}
+
+func boilerEnumsWithout(enums []*BoilerEnum, skip []string) []*BoilerEnum {
+	// lol: cleanup xD
+	var a []*BoilerEnum
+	for _, e := range enums {
+		var skipped bool
+		for _, skip := range skip {
+			if strings.HasSuffix(e.ModelName, skip) {
+				skipped = true
+			}
+		}
+		if !skipped {
+			a = append(a, e)
+		}
+
+		// if len(skip) > 0 && sliceContains(skip, e.ModelName) {
+		// 	continue
+		// }
+	}
+	return a
 }
