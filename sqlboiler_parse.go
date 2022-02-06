@@ -93,10 +93,6 @@ func GetBoilerModels(dir string) ([]*BoilerModel, []*BoilerEnum) { //nolint:goco
 		// result in e.g. ID
 		boilerFieldName := splitted[1]
 
-		// if len(skipModels) > 0 && sliceContains(skipModels, modelName) {
-		// 	continue
-		// }
-
 		// handle names with lowercase e.g. userR, userL or other sqlboiler extra's
 		if isFirstCharacterLowerCase(modelName) {
 			// It's the relations of the model

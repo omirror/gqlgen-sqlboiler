@@ -23,7 +23,6 @@ type SchemaConfig struct {
 	BoilerModelDirectory Config
 	Directives           []string
 	SkipInputFields      []string
-	SkipSortFields       []string
 	GenerateBatchCreate  bool
 	GenerateMutations    bool
 	GenerateBatchDelete  bool
@@ -33,6 +32,7 @@ type SchemaConfig struct {
 	HookChangeField      func(model *SchemaModel, field *SchemaField)
 	HookChangeFields     func(model *SchemaModel, fields []*SchemaField, parenType ParentType) []*SchemaField
 	HookChangeModel      func(model *SchemaModel)
+	HookChangeSortFields func(model *SchemaModel, fields []*SchemaField) []*SchemaField
 }
 
 type SchemaGenerateConfig struct {
@@ -57,6 +57,8 @@ type SchemaField struct {
 	SkipWhere            bool
 	SkipCreate           bool
 	SkipUpdate           bool
+	SkipSort             bool
+	SkipFilter           bool
 	SkipBatchUpdate      bool
 	SkipBatchCreate      bool
 	InputDirectives      []string
@@ -210,10 +212,8 @@ func SchemaGet(
 
 		//	enum UserSort { FIRST_NAME, LAST_NAME }
 		w.l("enum " + model.Name + "Sort {")
-		filteredFields := fieldsWithout(model.Fields, config.SkipSortFields)
 
-		// log.Info().Str("Sort Model", model.Name).Msg("[schema]")
-		for _, v := range fieldAsEnumStrings(filteredFields) {
+		for _, v := range fieldAsEnumStrings(enhanceSortFields(config, model, model.Fields)) {
 			w.tl(v)
 		}
 		w.l("}")
@@ -559,17 +559,23 @@ func enhanceFields(config SchemaConfig, model *SchemaModel, fields []*SchemaFiel
 	return fields
 }
 
+func enhanceSortFields(config SchemaConfig, model *SchemaModel, fields []*SchemaField) []*SchemaField {
+	if config.HookChangeSortFields != nil {
+		return config.HookChangeSortFields(model, fields)
+	}
+	return fields
+}
+
 func fieldAsEnumStrings(fields []*SchemaField) []string {
 	var enums []string
 	for _, field := range fields {
 
-		if field.BoilerField != nil && (!field.BoilerField.IsRelation && !field.BoilerField.IsForeignKey) {
-			// log.Debug().Str("Sort Field", field.Name).Msg("[schema]")
+		if field.SkipSort {
+			continue
+		}
 
-			//Skip Map type Fields Ugly hack
-			if !strings.EqualFold(getFilterType(field), "map") {
-				enums = append(enums, strcase.ToScreamingSnake(field.Name))
-			}
+		if field.BoilerField != nil && (!field.BoilerField.IsRelation && !field.BoilerField.IsForeignKey) {
+			enums = append(enums, strcase.ToScreamingSnake(field.Name))
 		}
 	}
 	return enums
