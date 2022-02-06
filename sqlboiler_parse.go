@@ -46,6 +46,7 @@ type BoilerEnum struct {
 	ModelName     string
 	ModelFieldKey string
 	Values        []*BoilerEnumValue
+	Skipped       bool
 }
 
 type BoilerEnumValue struct {
@@ -374,26 +375,18 @@ func parseEnums(dir string) []*BoilerEnum {
 		return nil
 	}
 	matches := enumRegex.FindAllStringSubmatch(string(content), -1)
-	// a := make([]*BoilerEnum, len(matches))
-	var a []*BoilerEnum
-	for _, match := range matches {
+	a := make([]*BoilerEnum, len(matches))
+	for i, match := range matches {
 		// 1: message_letter
 		// 2: status
 		// 3: contents
 
-		// Ugly Hack for inbox model name: Inboxes
-		if strings.EqualFold(match[1], "inboxe") {
-			match[1] = "Inbox"
-		}
-
-		e := &BoilerEnum{
+		a[i] = &BoilerEnum{
 			Name:          strcase.ToCamel(match[1] + "_" + match[2]),
 			ModelName:     strcase.ToCamel(match[1]),
 			ModelFieldKey: strcase.ToCamel(match[2]),
 			Values:        parseEnumValues(match[3]),
 		}
-
-		a = append(a, e)
 	}
 	return a
 }

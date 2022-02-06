@@ -33,6 +33,7 @@ type SchemaConfig struct {
 	HookChangeFields     func(model *SchemaModel, fields []*SchemaField, parenType ParentType) []*SchemaField
 	HookChangeModel      func(model *SchemaModel)
 	HookChangeSortFields func(model *SchemaModel, fields []*SchemaField) []*SchemaField
+	HookChangeEnum       func(enum *BoilerEnum)
 }
 
 type SchemaGenerateConfig struct {
@@ -147,9 +148,7 @@ func SchemaGet(
 	// Parse models and their fields based on the sqlboiler model directory
 	boilerModels, boilerEnums := GetBoilerModels(config.BoilerModelDirectory.Directory)
 	models := executeHooksOnModels(boilerModelsToModels(boilerModels), config)
-
-	// Skip enums for ignored models
-	enums := executeHooksOnEnums(boilerEnums, models)
+	enums := executeHooksOnEnums(boilerEnums, config)
 
 	fullDirectives := make([]string, len(config.Directives))
 	for i, defaultDirective := range config.Directives {
@@ -569,7 +568,6 @@ func enhanceSortFields(config SchemaConfig, model *SchemaModel, fields []*Schema
 func fieldAsEnumStrings(fields []*SchemaField) []string {
 	var enums []string
 	for _, field := range fields {
-
 		if field.SkipSort {
 			continue
 		}
@@ -636,19 +634,15 @@ func executeHooksOnModels(models []*SchemaModel, config SchemaConfig) []*SchemaM
 	return a
 }
 
-func executeHooksOnEnums(enums []*BoilerEnum, models []*SchemaModel) []*BoilerEnum {
+func executeHooksOnEnums(enums []*BoilerEnum, config SchemaConfig) []*BoilerEnum {
 	var a []*BoilerEnum
-
 	for _, e := range enums {
-		var skipped bool
 
-		for _, skip := range models {
-			if !strings.HasSuffix(e.ModelName, skip.Name) {
-				skipped = true
-			}
+		if config.HookChangeEnum != nil {
+			config.HookChangeEnum(e)
 		}
 
-		if !skipped {
+		if !e.Skipped {
 			a = append(a, e)
 		}
 
