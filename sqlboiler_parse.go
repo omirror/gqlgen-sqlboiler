@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"unicode"
 
 	"github.com/iancoleman/strcase"
 	"github.com/rs/zerolog/log"
@@ -356,9 +357,11 @@ func parseTableNames(dir string) []string {
 }
 
 var (
-	// enumRegex       = regexp.MustCompile(`// Enum values for (\w+).(\w+)\nconst\s\(\n(:?(.|\n)*?)\n\)`) //nolint:gochecknoglobals
-	enumRegex       = regexp.MustCompile(`// Enum values for (\w+)(?:s){1}(\w+)\nconst\s\(\n(:?(.|\n)*?)\n\)`) //nolint:gochecknoglobals
-	enumValuesRegex = regexp.MustCompile(`\s(\w+)\s*=\s*"(\w+)"`)                                              //nolint:gochecknoglobals
+	// enumRegex       = regexp.MustCompile(`// Enum values for (\w+)(?:s){1}(\w+)\nconst\s\(\n(:?(.|\n)*?)\n\)`) //nolint:gochecknoglobals
+	// enumValuesRegex = regexp.MustCompile(`\s(\w+)\s*=\s*"(\w+)"`)                                              //nolint:gochecknoglobals
+
+	enumRegex       = regexp.MustCompile(`// Enum values for (.*)\nconst\s\(\n(:?(.|\n)*?)\n\)`) //nolint:gochecknoglobals
+	enumValuesRegex = regexp.MustCompile(`\s(\w+)\s*=\s*"(\w+)"`)                                //nolint:gochecknoglobals
 )
 
 func parseEnums(dir string) []*BoilerEnum {
@@ -377,18 +380,45 @@ func parseEnums(dir string) []*BoilerEnum {
 	matches := enumRegex.FindAllStringSubmatch(string(content), -1)
 	a := make([]*BoilerEnum, len(matches))
 	for i, match := range matches {
-		// 1: message_letter
+		// 1: messageLetterStatus
 		// 2: status
 		// 3: contents
 
+		modelName, fieldKey := stripLastWord(match[1])
+		name := strcase.ToCamel(match[1])
+		//fmt.Println("name", match[1])
+		//fmt.Println("modelName", modelName)
+		//fmt.Println("fieldKey", fieldKey)
+
 		a[i] = &BoilerEnum{
-			Name:          strcase.ToCamel(match[1] + "_" + match[2]),
-			ModelName:     strcase.ToCamel(match[1]),
-			ModelFieldKey: strcase.ToCamel(match[2]),
-			Values:        parseEnumValues(match[3]),
+			Name:          name,
+			ModelName:     strcase.ToCamel(modelName),
+			ModelFieldKey: strcase.ToCamel(fieldKey),
+			Values:        parseEnumValues(match[2]),
 		}
 	}
 	return a
+}
+
+func stripLastWord(v string) (string, string) {
+	var firstPart string
+	for i, character := range v {
+		if isUpperRune(character) && i != 0 {
+			break
+		}
+
+		firstPart += string(character)
+
+	}
+	lastPart := strings.TrimPrefix(v, firstPart)
+	return firstPart, lastPart
+}
+
+func isUpperRune(s rune) bool {
+	if !unicode.IsUpper(s) && unicode.IsLetter(s) {
+		return false
+	}
+	return true
 }
 
 func parseEnumValues(content string) []*BoilerEnumValue {

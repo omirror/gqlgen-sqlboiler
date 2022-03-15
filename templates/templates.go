@@ -91,6 +91,15 @@ func WriteTemplateFile(fileName string, cfg Options) error {
 	return nil
 }
 
+func Center(width int, pad string, s string) string {
+	if len(s)+2 > width {
+		return s
+	}
+	lpad := (width - len(s)) / 2
+	rpad := width - (lpad + len(s))
+	return strings.Repeat(pad, lpad) + s + strings.Repeat(pad, rpad)
+}
+
 func GetTemplateContent(cfg Options) (string, error) {
 	tpl, err := template.New("").Funcs(template.FuncMap{
 		"go":       gqlgenTemplates.ToGo,
@@ -99,8 +108,10 @@ func GetTemplateContent(cfg Options) (string, error) {
 		"ucFirst":  gqlgenTemplates.UcFirst,
 		"camel":    ToCamel,
 		"lower":    ToLowerAndGo,
+		"upper":    ToUpperCase,
 		"plural":   ToPlural,
 		"singular": ToSingular,
+		"center":   Center,
 	}).Parse(cfg.Template)
 	if err != nil {
 		return "", fmt.Errorf("parse: %v", err)
@@ -161,6 +172,10 @@ func ToLowerCase(str string) string {
 
 	return b.String()
 
+}
+
+func ToUpperCase(str string) string {
+	return strings.ToUpper(str)
 }
 
 func ToCamel(str string) string {
