@@ -42,6 +42,7 @@ type SchemaGenerateConfig struct {
 
 type SchemaModel struct {
 	Name   string
+	IsView bool
 	Fields []*SchemaField
 }
 
