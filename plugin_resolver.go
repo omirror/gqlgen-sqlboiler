@@ -2,23 +2,27 @@ package gbgen
 
 import (
 	"fmt"
-	// "path"
+	"path"
 	"strings"
+
+	"github.com/web-ridge/gqlgen-sqlboiler/v3/structs"
+
+	"github.com/web-ridge/gqlgen-sqlboiler/v3/cache"
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/iancoleman/strcase"
-
 	"github.com/99designs/gqlgen/codegen"
-	"github.com/99designs/gqlgen/plugin"
+	"github.com/99designs/gqlgen/codegen/config"
+	"github.com/iancoleman/strcase"
 	"github.com/web-ridge/gqlgen-sqlboiler/v3/templates"
 )
 
-func NewResolverPlugin(output, backend, frontend Config, resolverPluginConfig ResolverPluginConfig) plugin.Plugin {
+func NewResolverPlugin(resolverConfig config.ResolverConfig, output structs.Config, boilerCache *cache.BoilerCache, modelCache *cache.ModelCache, resolverPluginConfig ResolverPluginConfig) *ResolverPlugin {
 	return &ResolverPlugin{
+		resolverConfig: resolverConfig,
 		output:         output,
-		backend:        backend,
-		frontend:       frontend,
+		BoilerCache:    boilerCache,
+		ModelCache:     modelCache,
 		pluginConfig:   resolverPluginConfig,
 		rootImportPath: getRootImportPath(),
 	}
@@ -29,7 +33,7 @@ type AuthorizationScope struct {
 	ImportAlias       string
 	ScopeResolverName string
 	BoilerColumnName  string
-	AddHook           func(model *BoilerModel, resolver *Resolver, templateKey string) bool
+	AddHook           func(model *structs.BoilerModel, resolver *Resolver, templateKey string) bool
 }
 
 type ResolverPluginConfig struct {
@@ -39,65 +43,35 @@ type ResolverPluginConfig struct {
 }
 
 type ResolverPlugin struct {
-	output         Config
-	backend        Config
-	frontend       Config
+	resolverConfig config.ResolverConfig
+	BoilerCache    *cache.BoilerCache
+	ModelCache     *cache.ModelCache
+	output         structs.Config
 	pluginConfig   ResolverPluginConfig
 	rootImportPath string
 }
 
-var _ plugin.CodeGenerator = &ResolverPlugin{}
-
-func (m *ResolverPlugin) Name() string {
-	return "resolver-webridge"
-}
-
 func (m *ResolverPlugin) GenerateCode(data *codegen.Data) error {
-	if !data.Config.Resolver.IsDefined() {
-		return nil
-	}
-
-	log.Debug().Str("PackageName", data.Config.Resolver.Package).Msg("[resolver] get boiler models")
-	// gqlgenTemplates.CurrentImports = &gqlgenTemplates.Imports{}
-
-	// Get all models information
-	log.Debug().Msg("[resolver] get boiler models")
-	boilerModels, _ := GetBoilerModels(m.backend.Directory)
-	log.Debug().Msg("[resolver] get models")
-	baseModels := getModelsFromSchema(data.Schema, boilerModels)
-	log.Debug().Msg("[resolver] enhance models with information")
-	models := EnhanceModelsWithInformation(m.backend, nil, data.Config, boilerModels, baseModels, nil)
-	log.Debug().Msg("[resolver] generate file")
-	// switch data.Config.Resolver.Layout {
-	// case config.LayoutSingleFile:
-	err := m.generateSingleFile(data, models, boilerModels)
+	err := m.generateSingleFile(data, m.ModelCache.Models, m.BoilerCache.BoilerModels)
 	return err
-	//case config.LayoutFollowSchema:
-	//	return m.generatePerSchema(data, models, boilerModels)
-	//}
-	//log.Debug().Msg("[resolver] generated files")
-	//return nil
 }
 
-func (m *ResolverPlugin) generateSingleFile(data *codegen.Data, models []*Model, _ []*BoilerModel) error {
+func (m *ResolverPlugin) generateSingleFile(data *codegen.Data, models []*structs.Model, _ []*structs.BoilerModel) error {
 	file := File{}
 
 	file.Imports = append(file.Imports, Import{
-		Alias: ".",
-		// ImportPath: path.Join(m.rootImportPath, m.output.Directory),
-		ImportPath: m.output.ImportPath,
+		Alias:      ".",
+		ImportPath: path.Join(m.rootImportPath, m.output.Directory),
 	})
 
 	file.Imports = append(file.Imports, Import{
-		Alias: "dm",
-		// ImportPath: path.Join(m.rootImportPath, m.backend.Directory),
-		ImportPath: m.backend.ImportPath,
+		Alias:      "dm",
+		ImportPath: path.Join(m.rootImportPath, m.ModelCache.Backend.Directory),
 	})
 
 	file.Imports = append(file.Imports, Import{
-		Alias: "fm",
-		// ImportPath: path.Join(m.rootImportPath, m.frontend.Directory),
-		ImportPath: m.frontend.ImportPath,
+		Alias:      "fm",
+		ImportPath: path.Join(m.rootImportPath, m.ModelCache.Frontend.Directory),
 	})
 
 	file.Imports = append(file.Imports, Import{
@@ -142,9 +116,9 @@ func (m *ResolverPlugin) generateSingleFile(data *codegen.Data, models []*Model,
 
 	resolverBuild := &ResolverBuild{
 		File:                &file,
-		PackageName:         data.Config.Resolver.Package,
-		ResolverType:        data.Config.Resolver.Type,
-		HasRoot:             true,
+		PackageName:         m.resolverConfig.Package,
+		ResolverType:        m.resolverConfig.Type,
+		HasRoot:             false,
 		Models:              models,
 		AuthorizationScopes: m.pluginConfig.AuthorizationScopes,
 	}
@@ -156,9 +130,9 @@ func (m *ResolverPlugin) generateSingleFile(data *codegen.Data, models []*Model,
 		return err
 	}
 
-	return templates.WriteTemplateFile(data.Config.Resolver.Filename, templates.Options{
+	return templates.WriteTemplateFile(m.resolverConfig.Filename, templates.Options{
 		Template:    templateContent,
-		PackageName: data.Config.Resolver.Package,
+		PackageName: m.resolverConfig.Package,
 		Data:        resolverBuild,
 	})
 }
@@ -176,7 +150,7 @@ type ResolverBuild struct {
 	HasRoot             bool
 	PackageName         string
 	ResolverType        string
-	Models              []*Model
+	Models              []*structs.Model
 	AuthorizationScopes []*AuthorizationScope
 	TryHook             func(string) bool
 }
@@ -208,8 +182,8 @@ type Resolver struct {
 	ResolveOrganizationID     bool // TODO: something more pluggable
 	ResolveUserOrganizationID bool // TODO: something more pluggable
 	ResolveUserID             bool // TODO: something more pluggable
-	Model                     Model
-	InputModel                Model
+	Model                     structs.Model
+	InputModel                structs.Model
 	BoilerWhiteList           string
 	PublicErrorKey            string
 	PublicErrorMessage        string
@@ -248,7 +222,7 @@ func (rb *ResolverBuild) ShortResolverDeclaration(r *Resolver) string {
 	return res
 }
 
-func enhanceResolver(resolverConfig ResolverPluginConfig, r *Resolver, models []*Model) { //nolint:gocyclo
+func enhanceResolver(resolverConfig ResolverPluginConfig, r *Resolver, models []*structs.Model) { //nolint:gocyclo
 	nameOfResolver := r.Field.GoFieldName
 
 	// get model names + model convert information
@@ -270,11 +244,11 @@ func enhanceResolver(resolverConfig ResolverPluginConfig, r *Resolver, models []
 		r.IsBatchCreate = containsPrefixAndPartAfterThatIsPlural(nameOfResolver, "Create")
 		r.IsBatchUpdate = containsPrefixAndPartAfterThatIsPlural(nameOfResolver, "Update")
 		r.IsBatchDelete = containsPrefixAndPartAfterThatIsPlural(nameOfResolver, "Delete")
-		if resolverConfig.EnableSoftDeletes == true && model.HasDeletedAt {
+		if resolverConfig.EnableSoftDeletes && model.HasDeletedAt {
 			r.SoftDeleteSuffix = ", false"
 		}
 	case "Query":
-		isPlural := IsPlural(nameOfResolver)
+		isPlural := cache.IsPlural(nameOfResolver)
 		if isPlural {
 			r.IsList = isPlural
 			r.IsListBackward = strings.Contains(r.Field.GoFieldName, "first int") &&
@@ -330,16 +304,16 @@ func enhanceResolver(resolverConfig ResolverPluginConfig, r *Resolver, models []
 	r.PublicErrorKey += "Error"
 }
 
-func findModelOrEmpty(models []*Model, modelName string) Model {
+func findModelOrEmpty(models []*structs.Model, modelName string) structs.Model {
 	if modelName == "" {
-		return Model{}
+		return structs.Model{}
 	}
 	for _, m := range models {
 		if m.Name == modelName {
 			return *m
 		}
 	}
-	return Model{}
+	return structs.Model{}
 }
 
 var InputTypes = []string{"Create", "Update", "Delete"} //nolint:gochecknoglobals
@@ -356,9 +330,9 @@ func getModelNames(v string, plural bool) (modelName, inputModelName string) {
 	}
 	var s string
 	if plural {
-		s = Plural(v)
+		s = cache.Plural(v)
 	} else {
-		s = Singular(v)
+		s = cache.Singular(v)
 	}
 
 	if isInputType {
@@ -370,10 +344,10 @@ func getModelNames(v string, plural bool) (modelName, inputModelName string) {
 
 func containsPrefixAndPartAfterThatIsSingle(v string, prefix string) bool {
 	partAfterThat := strings.TrimPrefix(v, prefix)
-	return strings.HasPrefix(v, prefix) && IsSingular(partAfterThat)
+	return strings.HasPrefix(v, prefix) && cache.IsSingular(partAfterThat)
 }
 
 func containsPrefixAndPartAfterThatIsPlural(v string, prefix string) bool {
 	partAfterThat := strings.TrimPrefix(v, prefix)
-	return strings.HasPrefix(v, prefix) && IsPlural(partAfterThat)
+	return strings.HasPrefix(v, prefix) && cache.IsPlural(partAfterThat)
 }

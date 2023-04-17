@@ -1,4 +1,4 @@
-package gbgen
+package cache
 
 import (
 	"fmt"
@@ -12,57 +12,15 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/web-ridge/gqlgen-sqlboiler/v3/structs"
+
 	"github.com/iancoleman/strcase"
 	"github.com/rs/zerolog/log"
 )
 
-type BoilerModel struct {
-	Name               string
-	TableName          string
-	PluralName         string
-	Fields             []*BoilerField
-	Enums              []*BoilerEnum
-	HasPrimaryStringID bool
-	HasDeletedAt       bool
-	IsView             bool
-}
-
-type BoilerField struct {
-	Name             string
-	PluralName       string
-	Type             string
-	IsForeignKey     bool
-	IsRequired       bool
-	IsArray          bool
-	IsEnum           bool
-	IsRelation       bool
-	InTable          bool
-	InTableNotID     bool
-	Enum             BoilerEnum
-	RelationshipName string
-	Relationship     *BoilerModel
-}
-
-type BoilerEnum struct {
-	Name          string
-	ModelName     string
-	ModelFieldKey string
-	Values        []*BoilerEnumValue
-	Skipped       bool
-}
-
-type BoilerEnumValue struct {
-	Name string
-}
-
-type BoilerType struct {
-	Name string
-	Type string
-}
-
 // parseModelsAndFieldsFromBoiler since these are like User.ID, User.Organization and we want them grouped by
 // modelName and their belonging fields.
-func GetBoilerModels(dir string) ([]*BoilerModel, []*BoilerEnum) { //nolint:gocognit,gocyclo
+func GetBoilerModels(dir string) ([]*structs.BoilerModel, []*structs.BoilerEnum) { //nolint:gocognit,gocyclo
 	boilerTypeMap, _, boilerTypeOrder := parseBoilerFile(dir)
 	boilerTypes := getSortedBoilerTypes(boilerTypeMap, boilerTypeOrder)
 	tableNames := parseTableNames(dir)
@@ -70,26 +28,26 @@ func GetBoilerModels(dir string) ([]*BoilerModel, []*BoilerEnum) { //nolint:goco
 	allTableNames := append(tableNames, viewNames...)
 	enums := parseEnums(dir, allTableNames)
 
-	// sortedModelNames is needed to get the right order back of the models since we want the same order every time
+	// sortedModelNames is needed to get the right order back of the structs since we want the same order every time
 	// this program has ran.
 	var modelNames []string
 
 	// fieldsPerModelName is needed to group the fields per model, so we can get all fields per modelName later on
-	fieldsPerModelName := map[string][]*BoilerField{}
-	relationsPerModelName := map[string][]*BoilerField{}
+	fieldsPerModelName := map[string][]*structs.BoilerField{}
+	relationsPerModelName := map[string][]*structs.BoilerField{}
 
 	// Anonymous function because this is used 2 times it prevents duplicated code
 	// It's automatically init an empty field array if it does not exist yet
-	addFieldToMap := func(m map[string][]*BoilerField, modelName string, field *BoilerField) {
-		modelNames = appendIfMissing(modelNames, modelName)
+	addFieldToMap := func(m map[string][]*structs.BoilerField, modelName string, field *structs.BoilerField) {
+		modelNames = AppendIfMissing(modelNames, modelName)
 		_, ok := m[modelName]
 		if !ok {
-			m[modelName] = []*BoilerField{}
+			m[modelName] = []*structs.BoilerField{}
 		}
 		m[modelName] = append(m[modelName], field)
 	}
 
-	// Let's parse boilerTypes to models and fields
+	// Let's parse boilerTypes to structs and fields
 	for _, boiler := range boilerTypes {
 		// split on . input is like model.Field e.g. -> User.ID
 		splitted := strings.Split(boiler.Name, ".")
@@ -99,7 +57,7 @@ func GetBoilerModels(dir string) ([]*BoilerModel, []*BoilerEnum) { //nolint:goco
 		boilerFieldName := splitted[1]
 
 		// handle names with lowercase e.g. userR, userL or other sqlboiler extra's
-		if isFirstCharacterLowerCase(modelName) {
+		if IsFirstCharacterLowerCase(modelName) {
 			// It's the relations of the model
 			// let's add them so we can use them later
 			if strings.HasSuffix(modelName, "R") {
@@ -108,7 +66,7 @@ func GetBoilerModels(dir string) ([]*BoilerModel, []*BoilerEnum) { //nolint:goco
 				isArray := strings.HasSuffix(boiler.Type, "Slice")
 				boilerType := strings.TrimSuffix(boiler.Type, "Slice")
 
-				relationField := &BoilerField{
+				relationField := &structs.BoilerField{
 					Name:             boilerFieldName,
 					RelationshipName: strings.TrimSuffix(boilerFieldName, "ID"),
 					PluralName:       Plural(boilerFieldName),
@@ -133,7 +91,7 @@ func GetBoilerModels(dir string) ([]*BoilerModel, []*BoilerEnum) { //nolint:goco
 		isID := (boilerFieldName == "ID" || boilerFieldName == "Id")
 		isRelation := strings.HasSuffix(boilerFieldName, "ID") && !isID
 
-		addFieldToMap(fieldsPerModelName, modelName, &BoilerField{
+		addFieldToMap(fieldsPerModelName, modelName, &structs.BoilerField{
 			Name:             boilerFieldName,
 			PluralName:       Plural(boilerFieldName),
 			Type:             boiler.Type,
@@ -147,8 +105,8 @@ func GetBoilerModels(dir string) ([]*BoilerModel, []*BoilerEnum) { //nolint:goco
 	}
 	sort.Strings(modelNames)
 
-	// Let's generate the models in the same order as the sqlboiler structs were parsed
-	models := make([]*BoilerModel, len(modelNames))
+	// Let's generate the structs in the same order as the sqlboiler structs were parsed
+	models := make([]*structs.BoilerModel, len(modelNames))
 	for i, modelName := range modelNames {
 		fields := fieldsPerModelName[modelName]
 		tableName := findTableName(tableNames, modelName)
@@ -165,7 +123,7 @@ func GetBoilerModels(dir string) ([]*BoilerModel, []*BoilerEnum) { //nolint:goco
 			hasDeletedAt = true
 		}
 
-		models[i] = &BoilerModel{
+		models[i] = &structs.BoilerModel{
 			Name:               modelName,
 			TableName:          tableName,
 			PluralName:         Plural(modelName),
@@ -173,11 +131,11 @@ func GetBoilerModels(dir string) ([]*BoilerModel, []*BoilerEnum) { //nolint:goco
 			Enums:              filterEnumsByModelName(enums, modelName),
 			HasPrimaryStringID: hasPrimaryStringID,
 			HasDeletedAt:       hasDeletedAt,
-			IsView:             sliceContains(viewNames, modelName),
+			IsView:             SliceContains(viewNames, modelName),
 		}
 	}
 
-	// let's fill relationship models
+	// let's fill relationship structs
 	// We need to this after because we have pointers to relationships
 	for _, model := range models {
 		relationFields := relationsPerModelName[model.Name]
@@ -199,6 +157,7 @@ func GetBoilerModels(dir string) ([]*BoilerModel, []*BoilerEnum) { //nolint:goco
 	for _, model := range models {
 		for _, field := range model.Fields {
 			enumForField := getEnumByModelNameAndFieldName(enums, model.Name, field.Name)
+			// fmt.Println("enumForField", field.Name, enumForField)
 			if enumForField != nil {
 				field.IsEnum = true
 				field.IsRelation = false
@@ -206,7 +165,7 @@ func GetBoilerModels(dir string) ([]*BoilerModel, []*BoilerEnum) { //nolint:goco
 			}
 
 			if field.IsRelation && field.Relationship == nil {
-				log.Warn().Str("model", model.Name).Str("field", field.Name).Msg(
+				log.Debug().Str("model", model.Name).Str("field", field.Name).Msg(
 					"We could not find the relationship in the generated " +
 						"boiler structs this could result in unexpected behavior, we marked this field as " +
 						"non-relational \n")
@@ -219,8 +178,10 @@ func GetBoilerModels(dir string) ([]*BoilerModel, []*BoilerEnum) { //nolint:goco
 	return models, enums
 }
 
-func getEnumByModelNameAndFieldName(enums []*BoilerEnum, modelName string, fieldName string) *BoilerEnum {
+func getEnumByModelNameAndFieldName(enums []*structs.BoilerEnum, modelName string, fieldName string) *structs.BoilerEnum {
 	for _, e := range enums {
+		// fmt.Println("        ", e.ModelName, modelName)
+		// fmt.Println("        ", e.ModelFieldKey, fieldName)
 		if e.ModelName == modelName && e.ModelFieldKey == fieldName {
 			return e
 		}
@@ -228,8 +189,8 @@ func getEnumByModelNameAndFieldName(enums []*BoilerEnum, modelName string, field
 	return nil
 }
 
-func filterEnumsByModelName(enums []*BoilerEnum, modelName string) []*BoilerEnum {
-	var a []*BoilerEnum
+func filterEnumsByModelName(enums []*structs.BoilerEnum, modelName string) []*structs.BoilerEnum {
+	var a []*structs.BoilerEnum
 	for _, e := range enums {
 		if e.ModelName == modelName {
 			a = append(a, e)
@@ -238,7 +199,7 @@ func filterEnumsByModelName(enums []*BoilerEnum, modelName string) []*BoilerEnum
 	return a
 }
 
-func findBoilerIdField(fields []*BoilerField, fieldName string) *BoilerField {
+func findBoilerIdField(fields []*structs.BoilerField, fieldName string) *structs.BoilerField {
 	for _, m := range fields {
 		if m.Name == "ID" || m.Name == "Id" {
 			return m
@@ -247,7 +208,7 @@ func findBoilerIdField(fields []*BoilerField, fieldName string) *BoilerField {
 	return nil
 }
 
-func findBoilerField(fields []*BoilerField, fieldName string) *BoilerField {
+func findBoilerField(fields []*structs.BoilerField, fieldName string) *structs.BoilerField {
 	for _, m := range fields {
 		if m.Name == fieldName {
 			return m
@@ -272,15 +233,6 @@ func findTableName(tableNames []string, modelName string) string {
 	return modelName
 }
 
-func FindBoilerModel(models []*BoilerModel, modelName string) *BoilerModel {
-	for _, m := range models {
-		if m.Name == modelName {
-			return m
-		}
-	}
-	return nil
-}
-
 func isRequired(boilerType string) bool {
 	if strings.HasPrefix(boilerType, "null.") ||
 		strings.HasPrefix(boilerType, "types.Null") ||
@@ -290,16 +242,9 @@ func isRequired(boilerType string) bool {
 	return true
 }
 
-func isFirstCharacterLowerCase(s string) bool {
-	if len(s) > 0 && s[0] == strings.ToLower(s)[0] {
-		return true
-	}
-	return false
-}
-
 // getSortedBoilerTypes orders the sqlboiler struct in an ordered slice of BoilerType
 func getSortedBoilerTypes(boilerTypeMap map[string]string, boilerTypeOrder map[string]int) (
-	sortedBoilerTypes []*BoilerType) {
+	sortedBoilerTypes []*structs.BoilerType) {
 	boilerTypeKeys := make([]string, 0, len(boilerTypeMap))
 	for k := range boilerTypeMap {
 		boilerTypeKeys = append(boilerTypeKeys, k)
@@ -329,7 +274,7 @@ func getSortedBoilerTypes(boilerTypeMap map[string]string, boilerTypeOrder map[s
 
 	for _, modelAndField := range boilerTypeKeys {
 		// fmt.Println(modelAndField)
-		sortedBoilerTypes = append(sortedBoilerTypes, &BoilerType{
+		sortedBoilerTypes = append(sortedBoilerTypes, &structs.BoilerType{
 			Name: modelAndField,
 			Type: boilerTypeMap[modelAndField],
 		})
@@ -382,14 +327,11 @@ func parseViews(dir string) []string {
 }
 
 var (
-	// enumRegex       = regexp.MustCompile(`// Enum values for (\w+)(?:s){1}(\w+)\nconst\s\(\n(:?(.|\n)*?)\n\)`) //nolint:gochecknoglobals
-	// enumValuesRegex = regexp.MustCompile(`\s(\w+)\s*=\s*"(\w+)"`)                                              //nolint:gochecknoglobals
-
 	enumRegex       = regexp.MustCompile(`// Enum values for (.*)\nconst\s\(\n(:?(.|\n)*?)\n\)`) //nolint:gochecknoglobals
 	enumValuesRegex = regexp.MustCompile(`\s(\w+)\s*string\s*=\s*"(\w+)"`)                       //nolint:gochecknoglobals
 )
 
-func parseEnums(dir string, allTableNames []string) []*BoilerEnum {
+func parseEnums(dir string, allTableNames []string) []*structs.BoilerEnum {
 	dir, err := filepath.Abs(dir)
 	errMessage := "could not open enum names file, this could not lead to problems if you're " +
 		"using enums in your db"
@@ -403,19 +345,15 @@ func parseEnums(dir string, allTableNames []string) []*BoilerEnum {
 		return nil
 	}
 	matches := enumRegex.FindAllStringSubmatch(string(content), -1)
-	a := make([]*BoilerEnum, len(matches))
+	a := make([]*structs.BoilerEnum, len(matches))
 	for i, match := range matches {
 		// 1: messageLetterStatus
 		// 2: status
 		// 3: contents
-
 		modelName, fieldKey := stripLastWord(match[1], allTableNames)
 		name := strcase.ToCamel(match[1])
-		// fmt.Println("name", match[1])
-		// fmt.Println("modelName", modelName)
-		// fmt.Println("fieldKey", fieldKey)
 
-		a[i] = &BoilerEnum{
+		a[i] = &structs.BoilerEnum{
 			Name:          name,
 			ModelName:     strcase.ToCamel(modelName),
 			ModelFieldKey: strcase.ToCamel(fieldKey),
@@ -447,16 +385,15 @@ func isUpperRune(s rune) bool {
 	return true
 }
 
-func parseEnumValues(content string) []*BoilerEnumValue {
+func parseEnumValues(content string) []*structs.BoilerEnumValue {
 	matches := enumValuesRegex.FindAllStringSubmatch(content, -1)
-	a := make([]*BoilerEnumValue, len(matches))
+	a := make([]*structs.BoilerEnumValue, len(matches))
 	for i, match := range matches {
 		// 1: message_letter
 		// 2: status
 		// 2: status
 		// 3: contents
-
-		a[i] = &BoilerEnumValue{
+		a[i] = &structs.BoilerEnumValue{
 			Name: match[1],
 		}
 	}
@@ -536,7 +473,7 @@ func parseBoilerFile(dir string) (map[string]string, map[string]string, map[stri
 
 							name := field.Names[0].Name
 
-							if !isFirstCharacterLowerCase(name) {
+							if !IsFirstCharacterLowerCase(name) {
 								//nolint:errcheck //TODO: handle errors
 								t, _ := field.Type.(*ast.ArrayType)
 
