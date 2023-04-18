@@ -67,11 +67,9 @@ func (t ConvertTemplateData) Imports() []Import {
 	}
 }
 
-func NewConvertPlugin(modelCache *cache.ModelCache, backend, frontend structs.Config, pluginConfig ConvertPluginConfig) *ConvertPlugin {
+func NewConvertPlugin(modelCache *cache.ModelCache, pluginConfig ConvertPluginConfig) *ConvertPlugin {
 	return &ConvertPlugin{
 		ModelCache:     modelCache,
-		Backend:        backend,
-		Frontend:       frontend,
 		PluginConfig:   pluginConfig,
 		rootImportPath: getRootImportPath(),
 	}
@@ -80,8 +78,6 @@ func NewConvertPlugin(modelCache *cache.ModelCache, backend, frontend structs.Co
 type ConvertPlugin struct {
 	BoilerCache    *cache.BoilerCache
 	ModelCache     *cache.ModelCache
-	Backend        structs.Config
-	Frontend       structs.Config
 	PluginConfig   ConvertPluginConfig
 	rootImportPath string
 }
@@ -107,10 +103,12 @@ func (m *ConvertPlugin) GenerateCode() error {
 		Backend: structs.Config{
 			Directory:   path.Join(m.rootImportPath, m.ModelCache.Backend.Directory),
 			PackageName: m.ModelCache.Backend.PackageName,
+			ImportPath:  m.ModelCache.Backend.ImportPath,
 		},
 		Frontend: structs.Config{
 			Directory:   path.Join(m.rootImportPath, m.ModelCache.Frontend.Directory),
 			PackageName: m.ModelCache.Frontend.PackageName,
+			ImportPath:  m.ModelCache.Frontend.ImportPath,
 		},
 		PluginConfig: m.PluginConfig,
 		Interfaces:   m.ModelCache.Interfaces,
