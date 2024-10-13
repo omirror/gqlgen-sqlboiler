@@ -154,6 +154,7 @@ func SchemaGet(
 	// Parse structs and their fields based on the sqlboiler model directory
 
 	models := executeHooksOnModels(boilerModelsToModels(config.BoilerCache.BoilerModels), config)
+	enums := executeHooksOnEnums(config.BoilerCache.BoilerEnums, config)
 
 	fullDirectives := make([]string, len(config.Directives))
 	for i, defaultDirective := range config.Directives {
@@ -191,7 +192,7 @@ func SchemaGet(
 	// Add helpers for filtering lists
 	w.l(queryHelperStructs)
 
-	for _, enum := range config.BoilerCache.BoilerEnums {
+	for _, enum := range enums {
 
 		//	enum UserRoleFilter { ADMIN, USER }
 		w.l(fmt.Sprintf(enumFilterHelper, enum.Name))
@@ -643,6 +644,22 @@ func executeHooksOnModels(models []*SchemaModel, config SchemaConfig) []*SchemaM
 		}
 
 		a = append(a, m)
+
+	}
+	return a
+}
+
+func executeHooksOnEnums(enums []*structs.BoilerEnum, config SchemaConfig) []*structs.BoilerEnum {
+	var a []*structs.BoilerEnum
+	for _, e := range enums {
+
+		if config.HookChangeEnum != nil {
+			config.HookChangeEnum(e)
+		}
+
+		if !e.Skipped {
+			a = append(a, e)
+		}
 
 	}
 	return a

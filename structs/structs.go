@@ -140,6 +140,7 @@ type BoilerEnum struct {
 	ModelName     string
 	ModelFieldKey string
 	Values        []*BoilerEnumValue
+	Skipped       bool
 }
 
 type BoilerEnumValue struct {
