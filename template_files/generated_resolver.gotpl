@@ -137,15 +137,15 @@ const inputKey = "input"
 			}
 
 			// resolve requested fields after creating
-			mods := Get{{ .Model.Name }}PreloadModsWithLevel(ctx, {{ .Model.Name }}PayloadPreloadLevels.{{ .Model.Name }})
-			mods = append(mods, dm.{{ .Model.Name }}Where.Id.EQ(m.Id))
+			mods := Get{{ .Model.Name }}PreloadModsWithLevel(ctx, {{ .Model.Name }}PayloadPreloadLevels.{{ .Model.JSONName }})
+			mods = append(mods, dm.{{ .Model.Name }}Where.ID.EQ(m.ID))
 			pM, err := dm.{{ .Model.PluralName }}(mods...).One(ctx, r.db)
 			if err != nil {
 				log.Error().Err(err).Msg({{ $resolver.PublicErrorKey }})
 				return nil, errors.New({{ $resolver.PublicErrorKey }})
 			}
 			return &fm.{{ .Model.Name }}Payload{
-				{{ .Model.Name }}: {{ .Model.Name }}ToGraphQL(pM),
+				{{ .Model.JSONName }}: {{ .Model.Name }}ToGraphQL(pM),
 			}, nil
 
 		{{- end -}}
@@ -195,8 +195,8 @@ const inputKey = "input"
 			}
 
 			// resolve requested fields after updating
-			mods := Get{{ .Model.Name }}PreloadModsWithLevel(ctx, {{ .Model.Name }}PayloadPreloadLevels.{{ .Model.Name }})
-			mods = append(mods, dm.{{ .Model.Name }}Where.Id.EQ(dbID))
+			mods := Get{{ .Model.Name }}PreloadModsWithLevel(ctx, {{ .Model.Name }}PayloadPreloadLevels.{{ .Model.JSONName }})
+			mods = append(mods, dm.{{ .Model.Name }}Where.ID.EQ(dbID))
 			{{ range $scope := $.AuthorizationScopes -}}
 				{{- if (call $scope.AddHook $resolver.Model.BoilerModel $resolver "updateAfterWhere")   }}
 					mods = append(mods, dm.{{ $resolver.Model.Name }}Where.{{ $scope.BoilerColumnName }}.EQ({{ $scope.ImportAlias }}.{{ $scope.ScopeResolverName }}(ctx)))
@@ -209,7 +209,7 @@ const inputKey = "input"
 				return nil, errors.New({{ $resolver.PublicErrorKey }})
 			}
 			return &fm.{{ .Model.Name }}Payload{
-				{{ .Model.Name }}: {{ .Model.Name }}ToGraphQL(pM),
+				{{ .Model.JSONName }}: {{ .Model.Name }}ToGraphQL(pM),
 			}, nil
 
 		{{- end -}}
@@ -272,7 +272,7 @@ const inputKey = "input"
 			{{- end }}
 			mods = append(mods, {{.Model.Name}}FilterToMods(filter)...)
 			mods = append(mods, qm.Select(dm.{{ .Model.Name }}Columns.Id))
-			mods = append(mods, qm.From(dm.{{- $model.TableNameResolverName }}.{{ .Model.BoilerModel.TableName }}))
+			mods = append(mods, qm.From(dm.{{- .Model.TableNameResolverName }}.{{ .Model.BoilerModel.TableName }}))
 
 			{{- if .Model.HasPrimaryStringID }}
 			var IDsToRemove []boilergql.RemovedStringID
@@ -285,13 +285,13 @@ const inputKey = "input"
 			}
 
 			boilerIDs := boilergql.RemovedIDsToBoiler{{.Model.PrimaryKeyType|go}}(IDsToRemove)
-			if _, err := dm.{{ .Model.PluralName }}(dm.{{ .Model.Name }}Where.Id.IN(boilerIDs)).DeleteAll(ctx, r.db); err != nil {
+			if _, err := dm.{{ .Model.PluralName }}(dm.{{ .Model.Name }}Where.ID.IN(boilerIDs)).DeleteAll(ctx, r.db{{$resolver.SoftDeleteSuffix}}); err != nil {
 				log.Error().Err(err).Msg({{ $resolver.PublicErrorKey }})
 				return nil, errors.New({{ $resolver.PublicErrorKey }})
 			}
 
 			return &fm.{{ .Model.PluralName }}DeletePayload{
-				Ids: boilergql.{{.Model.PrimaryKeyType|go}}IDsToGraphQL(boilerIDs, dm.{{- $model.TableNameResolverName }}.{{ .Model.BoilerModel.TableName }}),
+				Ids: boilergql.{{.Model.PrimaryKeyType|go}}IDsToGraphQL(boilerIDs, dm.{{- .Model.TableNameResolverName }}.{{ .Model.BoilerModel.TableName }}),
 			}, nil
 		{{- end }}
 	}
@@ -309,7 +309,7 @@ func (r *queryResolver) Node(ctx context.Context, globalGraphID string) (fm.Node
 		{{ range $model := .Models -}}
 		{{ if .IsNormal  -}}
 		case "{{$model.Name}}":
-			return r.{{$model.Name}}(ctx, globalGraphID)
+			return r.{{$model.JSONName}}(ctx, globalGraphID)
 		{{ end -}}
 		{{ end -}}
 

@@ -23,13 +23,6 @@ import (
 var pathRegex *regexp.Regexp //nolint:gochecknoglobals
 
 func init() { //nolint:gochecknoinits
-	fmt.Println("               _     _____  _     _            \n              | |   |  __ \\(_)   | |           \n __      _____| |__ | |__) |_  __| | __ _  ___ \n \\ \\ /\\ / / _ \\ '_ \\|  _  /| |/ _` |/ _` |/ _ \\\n  \\ V  V /  __/ |_) | | \\ \\| | (_| | (_| |  __/\n   \\_/\\_/ \\___|_.__/|_|  \\_\\_|\\__,_|\\__, |\\___|\n                                     __/ |     \n                                    |___/   ") //nolint:lll
-	fmt.Println("")
-	fmt.Println("  Please help us with feedback, stars and PR's to improve this plugin.")
-	fmt.Println("  If you don't have time for that, please donate if you like this project.")
-	fmt.Println("  Click the sponsor button (PayPal) on https://github.com/web-ridge/gqlgen-sqlboiler")
-	fmt.Println("")
-
 	pathRegex = regexp.MustCompile(`src/(.*)`)
 
 	// Default level for this example is info, unless debug flag is present
@@ -58,11 +51,11 @@ func (t ConvertTemplateData) Imports() []Import {
 	return []Import{
 		{
 			Alias:      t.Frontend.PackageName,
-			ImportPath: t.Frontend.ImportPath,
+			ImportPath: t.Frontend.Directory,
 		},
 		{
 			Alias:      t.Backend.PackageName,
-			ImportPath: t.Backend.ImportPath,
+			ImportPath: t.Backend.Directory,
 		},
 	}
 }
@@ -94,7 +87,6 @@ const (
 
 type ConvertPluginConfig struct {
 	DatabaseDriver DatabaseDriver
-	Templates      string
 }
 
 func (m *ConvertPlugin) GenerateCode() error {
@@ -103,12 +95,10 @@ func (m *ConvertPlugin) GenerateCode() error {
 		Backend: structs.Config{
 			Directory:   path.Join(m.rootImportPath, m.ModelCache.Backend.Directory),
 			PackageName: m.ModelCache.Backend.PackageName,
-			ImportPath:  m.ModelCache.Backend.ImportPath,
 		},
 		Frontend: structs.Config{
 			Directory:   path.Join(m.rootImportPath, m.ModelCache.Frontend.Directory),
 			PackageName: m.ModelCache.Frontend.PackageName,
-			ImportPath:  m.ModelCache.Frontend.ImportPath,
 		},
 		PluginConfig: m.PluginConfig,
 		Interfaces:   m.ModelCache.Interfaces,
@@ -135,8 +125,8 @@ func (m *ConvertPlugin) GenerateCode() error {
 		"generated_convert_batch.go",
 		"generated_convert_input.go",
 		"generated_filter.go",
-		"generated_filter_parser.go",
 		"generated_preload.go",
+		"generated_filter_parser.go",
 		"generated_sort.go",
 	}
 
@@ -155,9 +145,9 @@ func (m *ConvertPlugin) GenerateCode() error {
 
 func (m *ConvertPlugin) generateFile(data *ConvertTemplateData, fileName string, userDefinedFunctions []string) {
 	templateName := fileName + "tpl"
-	log.Debug().Msg("[convert] render " + templateName)
+	// log.Debug().Msg("[convert] render " + templateName)
 
-	templateContent, err := getTemplateContent(templateName, m.PluginConfig.Templates)
+	templateContent, err := getTemplateContent(templateName)
 	if err != nil {
 		log.Err(err).Msg("error when reading " + templateName)
 	}
@@ -172,22 +162,14 @@ func (m *ConvertPlugin) generateFile(data *ConvertTemplateData, fileName string,
 		}); renderError != nil {
 		log.Err(renderError).Msg("error while rendering " + templateName)
 	}
-	log.Debug().Msg("[convert] rendered " + templateName)
+	log.Debug().Msg("[convert] generated " + templateName)
 }
 
-func getTemplateContent(filename string, customTemplates string) (string, error) {
-	var err error
-	var content []byte
-
-	if customTemplates != "" {
-		content, err = ioutil.ReadFile(path.Join(customTemplates, filename))
-	} else {
-		// load path relative to calling source file
-		_, callerFile, _, _ := runtime.Caller(1) //nolint:dogsled
-		rootDir := filepath.Dir(callerFile)
-		content, err = ioutil.ReadFile(path.Join(rootDir, "template_files", filename))
-	}
-
+func getTemplateContent(filename string) (string, error) {
+	// load path relative to calling source file
+	_, callerFile, _, _ := runtime.Caller(1) //nolint:dogsled
+	rootDir := filepath.Dir(callerFile)
+	content, err := ioutil.ReadFile(path.Join(rootDir, "template_files", filename))
 	if err != nil {
 		return "", fmt.Errorf("could not read template file: %v", err)
 	}

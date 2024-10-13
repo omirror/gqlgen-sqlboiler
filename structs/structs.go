@@ -26,6 +26,7 @@ type Preload struct {
 
 type Model struct { //nolint:maligned
 	Name               string
+	JSONName           string
 	PluralName         string
 	BoilerModel        *BoilerModel
 	HasBoilerModel     bool
@@ -80,9 +81,10 @@ type Field struct { //nolint:maligned
 	// boiler relation stuff is inside this field
 	BoilerField BoilerField
 	// graphql relation ship can be found here
-	Relationship *Model
-	IsOr         bool
-	IsAnd        bool
+	Relationship  *Model
+	IsOr          bool
+	IsAnd         bool
+	IsWithDeleted bool
 
 	// Some stuff
 	Description  string
@@ -131,7 +133,6 @@ type BoilerField struct {
 	Enum             BoilerEnum
 	RelationshipName string
 	Relationship     *BoilerModel
-	IsView           bool
 }
 
 type BoilerEnum struct {
@@ -139,7 +140,6 @@ type BoilerEnum struct {
 	ModelName     string
 	ModelFieldKey string
 	Values        []*BoilerEnumValue
-	Skipped       bool
 }
 
 type BoilerEnumValue struct {
@@ -154,5 +154,4 @@ type BoilerType struct {
 type Config struct {
 	Directory   string
 	PackageName string
-	ImportPath  string
 }

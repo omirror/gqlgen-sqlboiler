@@ -168,14 +168,17 @@ func enhanceModelsWithFields(enums []*structs.Enum, schema *ast.Schema, cfg *con
 
 			// log some warnings when fields could not be converted
 			if boilerField.Type == "" {
-				// TODO: add filter + where here
+				skipWarningInFilter :=
+					strings.EqualFold(name, "and") ||
+						strings.EqualFold(name, "or") ||
+						strings.EqualFold(name, "search") ||
+						strings.EqualFold(name, "where") ||
+						strings.EqualFold(name, "withDeleted")
+
 				switch {
 				case m.IsPayload:
 				case IsPlural(name):
-				case (m.IsFilter || m.IsWhere) && (strings.EqualFold(name, "and") ||
-					strings.EqualFold(name, "or") ||
-					strings.EqualFold(name, "search") ||
-					strings.EqualFold(name, "where")) ||
+				case ((m.IsFilter || m.IsWhere) && skipWarningInFilter) ||
 					isEdges ||
 					isSort ||
 					isSortDirection ||
@@ -184,14 +187,14 @@ func enhanceModelsWithFields(enums []*structs.Enum, schema *ast.Schema, cfg *con
 					isNode:
 					// ignore
 				default:
-					log.Warn().Str("model.field", m.Name+"."+name).Msg("boiler type not available (empty type)")
+					log.Warn().Str("field", m.Name+"."+name).Msg("no database mapping")
 				}
 			}
 
 			if boilerField.Name == "" {
 				if m.IsPayload || m.IsFilter || m.IsWhere || m.IsOrdering || m.IsEdge || isPageInfo || isEdges {
 				} else {
-					log.Warn().Str("model.field", m.Name+"."+name).Msg("boiler type not available")
+					log.Warn().Str("field", m.Name+"."+name).Msg("no database mapping")
 					continue
 				}
 			}
@@ -210,14 +213,15 @@ func enhanceModelsWithFields(enums []*structs.Enum, schema *ast.Schema, cfg *con
 				IsRelation:         boilerField.IsRelation,
 				IsRelationAndNotForeignKey: boilerField.IsRelation &&
 					!strings.HasSuffix(strings.ToLower(name), "id"),
-				IsObject:     isObject,
-				IsOr:         strings.EqualFold(name, "or"),
-				IsAnd:        strings.EqualFold(name, "and"),
-				IsPlural:     IsPlural(name),
-				PluralName:   Plural(name),
-				OriginalType: typ,
-				Description:  field.Description,
-				Enum:         enum,
+				IsObject:      isObject,
+				IsOr:          strings.EqualFold(name, "or"),
+				IsAnd:         strings.EqualFold(name, "and"),
+				IsWithDeleted: strings.EqualFold(name, "withDeleted"),
+				IsPlural:      IsPlural(name),
+				PluralName:    Plural(name),
+				OriginalType:  typ,
+				Description:   field.Description,
+				Enum:          enum,
 			}
 			field.ConvertConfig = getConvertConfig(enums, m, field)
 			m.Fields = append(m.Fields, field)
@@ -521,7 +525,7 @@ func getModelsFromSchema(schema *ast.Schema, boilerModels []*structs.BoilerModel
 							// silent continue
 							continue
 						}
-						log.Warn().Str("model", modelName).Msg("skipped because no database model found")
+						log.Debug().Str("model", modelName).Msg("skipped because no database model found")
 						continue
 					}
 				}
@@ -537,6 +541,7 @@ func getModelsFromSchema(schema *ast.Schema, boilerModels []*structs.BoilerModel
 				}
 				m := &structs.Model{
 					Name:                  modelName,
+					JSONName:              strcase.ToCamel(modelName),
 					Description:           schemaType.Description,
 					PluralName:            Plural(modelName),
 					BoilerModel:           boilerModel,
@@ -650,7 +655,7 @@ func safeTrim(v string, trimSuffix string) string {
 }
 
 func foreignKeyToRel(v string) string {
-	return strings.TrimSuffix(strcase.ToCamel(v), "ID")
+	return strings.TrimSuffix(v, "ID")
 }
 
 func isStruct(t types.Type) bool {
@@ -810,7 +815,7 @@ func getGraphTypeAsText(graphType string) string {
 
 func FindBoilerModel(models []*structs.BoilerModel, modelName string) *structs.BoilerModel {
 	for _, m := range models {
-		if m.Name == modelName {
+		if strings.ToLower(m.Name) == strings.ToLower(modelName) {
 			return m
 		}
 	}

@@ -53,18 +53,25 @@ func GetBoilerModels(dir string) ([]*structs.BoilerModel, []*structs.BoilerEnum)
 		splitted := strings.Split(boiler.Name, ".")
 		// result in e.g. User
 		modelName := splitted[0]
+
 		// result in e.g. ID
 		boilerFieldName := splitted[1]
+		somethingFcm := strings.Contains(strings.ToLower(modelName), "fcm")
 
 		// handle names with lowercase e.g. userR, userL or other sqlboiler extra's
 		if IsFirstCharacterLowerCase(modelName) {
 			// It's the relations of the model
 			// let's add them so we can use them later
 			if strings.HasSuffix(modelName, "R") {
-				modelName = strcase.ToCamel(strings.TrimSuffix(modelName, "R"))
-
+				modelNameBefore := strings.TrimSuffix(modelName, "R")
+				modelName = strings.ToUpper(string(modelNameBefore[0])) + modelNameBefore[1:]
 				isArray := strings.HasSuffix(boiler.Type, "Slice")
 				boilerType := strings.TrimSuffix(boiler.Type, "Slice")
+
+				if somethingFcm {
+					fmt.Println("boilerType", boilerType)
+					fmt.Println("boilerFieldName", boilerFieldName)
+				}
 
 				relationField := &structs.BoilerField{
 					Name:             boilerFieldName,
@@ -197,15 +204,6 @@ func filterEnumsByModelName(enums []*structs.BoilerEnum, modelName string) []*st
 		}
 	}
 	return a
-}
-
-func findBoilerIdField(fields []*structs.BoilerField, fieldName string) *structs.BoilerField {
-	for _, m := range fields {
-		if m.Name == "ID" || m.Name == "Id" {
-			return m
-		}
-	}
-	return nil
 }
 
 func findBoilerField(fields []*structs.BoilerField, fieldName string) *structs.BoilerField {

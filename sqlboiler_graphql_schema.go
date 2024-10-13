@@ -23,20 +23,18 @@ const (
 )
 
 type SchemaConfig struct {
-	BoilerCache          *cache.BoilerCache
-	Directives           []string
-	SkipInputFields      []string
-	GenerateBatchCreate  bool
-	GenerateMutations    bool
-	GenerateBatchDelete  bool
-	GenerateBatchUpdate  bool
-	HookShouldAddModel   func(model SchemaModel) bool
-	HookShouldAddField   func(model SchemaModel, field SchemaField) bool
-	HookChangeField      func(model *SchemaModel, field *SchemaField)
-	HookChangeFields     func(model *SchemaModel, fields []*SchemaField, parenType ParentType) []*SchemaField
-	HookChangeModel      func(model *SchemaModel)
-	HookChangeSortFields func(model *SchemaModel, fields []*SchemaField) []*SchemaField
-	HookChangeEnum       func(enum *structs.BoilerEnum)
+	BoilerCache         *cache.BoilerCache
+	Directives          []string
+	SkipInputFields     []string
+	GenerateBatchCreate bool
+	GenerateMutations   bool
+	GenerateBatchDelete bool
+	GenerateBatchUpdate bool
+	HookShouldAddModel  func(model SchemaModel) bool
+	HookShouldAddField  func(model SchemaModel, field SchemaField) bool
+	HookChangeField     func(model *SchemaModel, field *SchemaField)
+	HookChangeFields    func(model *SchemaModel, fields []*SchemaField, parenType ParentType) []*SchemaField
+	HookChangeModel     func(model *SchemaModel)
 }
 
 type SchemaGenerateConfig struct {
@@ -151,9 +149,9 @@ func SchemaGet(
 ) string {
 	w := &SimpleWriter{}
 
-	// Parse models and their fields based on the sqlboiler model directory
+	// Parse structs and their fields based on the sqlboiler model directory
+
 	models := executeHooksOnModels(boilerModelsToModels(config.BoilerCache.BoilerModels), config)
-	enums := executeHooksOnEnums(config.BoilerCache.BoilerEnums, config)
 
 	fullDirectives := make([]string, len(config.Directives))
 	for i, defaultDirective := range config.Directives {
@@ -191,7 +189,7 @@ func SchemaGet(
 	// Add helpers for filtering lists
 	w.l(queryHelperStructs)
 
-	for _, enum := range enums {
+	for _, enum := range config.BoilerCache.BoilerEnums {
 
 		//	enum UserRoleFilter { ADMIN, USER }
 		w.l(fmt.Sprintf(enumFilterHelper, enum.Name))
@@ -213,7 +211,6 @@ func SchemaGet(
 	w.br()
 
 	for _, model := range models {
-
 		//	enum UserSort { FIRST_NAME, LAST_NAME }
 		w.l("enum " + model.Name + "Sort {")
 
@@ -329,12 +326,10 @@ func SchemaGet(
 				relationName := getRelationName(field)
 				w.tl(relationName + ": " + field.BoilerField.Relationship.Name + "Where" + directives)
 			} else {
-				// Skip Map Fields
-				if !strings.EqualFold(getFilterType(field), "map") {
-					w.tl(field.Name + ": " + getFilterType(field) + "Filter" + directives)
-				}
+				w.tl(field.Name + ": " + getFilterType(field) + "Filter" + directives)
 			}
 		}
+		w.tl("withDeleted: Boolean")
 		w.tl("or: " + model.Name + "Where")
 		w.tl("and: " + model.Name + "Where")
 		w.l("}")
@@ -648,22 +643,6 @@ func executeHooksOnModels(models []*SchemaModel, config SchemaConfig) []*SchemaM
 	return a
 }
 
-func executeHooksOnEnums(enums []*structs.BoilerEnum, config SchemaConfig) []*structs.BoilerEnum {
-	var a []*structs.BoilerEnum
-	for _, e := range enums {
-
-		if config.HookChangeEnum != nil {
-			config.HookChangeEnum(e)
-		}
-
-		if !e.Skipped {
-			a = append(a, e)
-		}
-
-	}
-	return a
-}
-
 func boilerFieldsToFields(boilerFields []*structs.BoilerField) []*SchemaField {
 	fields := make([]*SchemaField, len(boilerFields))
 	for i, boilerField := range boilerFields {
@@ -758,14 +737,13 @@ func toGraphQLName(fieldName string) string {
 }
 
 func toGraphQLType(boilerField *structs.BoilerField) string {
-	lowerFieldName := strings.ToLower(boilerField.Name)
 	lowerBoilerType := strings.ToLower(boilerField.Type)
 
 	if boilerField.IsEnum {
 		return boilerField.Enum.Name
 	}
 
-	if strings.HasSuffix(lowerFieldName, "id") {
+	if strings.HasSuffix(boilerField.Name, "ID") {
 		return "ID"
 	}
 	if strings.Contains(lowerBoilerType, "string") {
