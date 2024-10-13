@@ -26,9 +26,9 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qmhelper"
 	"github.com/volatiletech/null/v8"
 
-	"gleez.io/vdesk/util/boilergql"
+	"code.gleez.io/vdesk/util/boilergql"
 	
-	"gleez.io/vdesk/types"
+	"code.gleez.io/vdesk/types"
 	{{- range $import := .Imports }}
 		"{{ $import.ImportPath }}"
 	{{ end }}

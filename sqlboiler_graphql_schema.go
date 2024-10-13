@@ -35,6 +35,8 @@ type SchemaConfig struct {
 	HookChangeField     func(model *SchemaModel, field *SchemaField)
 	HookChangeFields    func(model *SchemaModel, fields []*SchemaField, parenType ParentType) []*SchemaField
 	HookChangeModel     func(model *SchemaModel)
+	HookChangeSortFields func(model *SchemaModel, fields []*SchemaField) []*SchemaField
+	HookChangeEnum       func(enum *structs.BoilerEnum)
 }
 
 type SchemaGenerateConfig struct {
@@ -326,7 +328,10 @@ func SchemaGet(
 				relationName := getRelationName(field)
 				w.tl(relationName + ": " + field.BoilerField.Relationship.Name + "Where" + directives)
 			} else {
-				w.tl(field.Name + ": " + getFilterType(field) + "Filter" + directives)
+				// Skip Map Fields
+				if !strings.EqualFold(getFilterType(field), "map") {
+					w.tl(field.Name + ": " + getFilterType(field) + "Filter" + directives)
+				}
 			}
 		}
 		w.tl("withDeleted: Boolean")
@@ -737,13 +742,14 @@ func toGraphQLName(fieldName string) string {
 }
 
 func toGraphQLType(boilerField *structs.BoilerField) string {
+	lowerFieldName := strings.ToLower(boilerField.Name)
 	lowerBoilerType := strings.ToLower(boilerField.Type)
 
 	if boilerField.IsEnum {
 		return boilerField.Enum.Name
 	}
 
-	if strings.HasSuffix(boilerField.Name, "ID") {
+	if strings.HasSuffix(lowerFieldName, "id") {
 		return "ID"
 	}
 	if strings.Contains(lowerBoilerType, "string") {

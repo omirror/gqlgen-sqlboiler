@@ -124,7 +124,7 @@ func (m *ResolverPlugin) generateSingleFile(data *codegen.Data, models []*struct
 	}
 
 	templateName := "generated_resolver.gotpl"
-	templateContent, err := getTemplateContent(templateName, m.pluginConfig.Templates)
+	templateContent, err := getTemplateContent(templateName)
 	if err != nil {
 		log.Err(err).Msg("error when reading " + templateName)
 		return err

@@ -8,7 +8,7 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/queries/qmhelper"
 
-	"gleez.io/vdesk/util/boilergql"
+	"code.gleez.io/vdesk/util/boilergql"
 	
 	{{ range $import := .Imports }}
 		{{ $import.Alias }} "{{ $import.ImportPath }}"

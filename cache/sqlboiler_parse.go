@@ -206,6 +206,15 @@ func filterEnumsByModelName(enums []*structs.BoilerEnum, modelName string) []*st
 	return a
 }
 
+func findBoilerIdField(fields []*structs.BoilerField, fieldName string) *structs.BoilerField {
+	for _, m := range fields {
+		if m.Name == "ID" || m.Name == "Id" {
+			return m
+		}
+	}
+	return nil
+}
+
 func findBoilerField(fields []*structs.BoilerField, fieldName string) *structs.BoilerField {
 	for _, m := range fields {
 		if m.Name == fieldName {
